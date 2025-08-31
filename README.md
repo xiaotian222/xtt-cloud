@@ -145,6 +145,109 @@ xtt-cloud 是一个基于 Spring Cloud Alibaba 的微服务框架，集成了 Na
 - **容器化**: Docker, Docker Compose
 - **编排**: Kubernetes (Helm Charts)
 
+## 🔧 配置文件加载机制
+
+### 📁 配置架构
+
+xtt-cloud 采用**分层配置**架构，实现配置与代码分离、配置动态更新、配置集中管理等微服务最佳实践。
+
+#### **配置层次结构**
+```
+本地配置 (application.yaml)
+    ↓
+Nacos 配置中心
+    ├── 服务特定配置 (integrated-account.yaml)
+    ├── 共享配置 (datasource-config.yaml)
+    └── 环境配置
+    ↓
+环境变量
+    ↓
+系统属性
+```
+
+### 🚀 配置加载流程
+
+#### **第一阶段：本地配置加载**
+应用启动时首先加载本地 `application.yaml` 文件，建立与 Nacos 的连接：
+
+```yaml
+spring:
+  cloud:
+    nacos:
+      config:
+        server-addr: nacos-server:8848
+        group: integrated-example
+        file-extension: yaml
+  config:
+    import:
+      - optional:nacos:integrated-account.yaml
+      - optional:nacos:datasource-config.yaml
+```
+
+#### **第二阶段：Nacos 配置导入**
+使用 Spring Boot 2.4+ 的 `spring.config.import` 机制，从 Nacos 拉取配置：
+
+- **服务特定配置**：每个服务的个性化配置
+- **共享配置**：多个服务共用的配置（如数据源配置）
+- **环境配置**：不同环境的差异化配置
+
+#### **第三阶段：配置合并与 Bean 创建**
+- 本地配置 + Nacos 配置进行合并
+- 基于最终配置创建 Spring Bean
+- 支持配置热更新和动态刷新
+
+### 🔄 核心组件
+
+#### **NacosConfigDataLocationResolver**
+- 解析 `nacos:` 前缀的配置位置
+- 支持参数配置：`group`、`refreshEnabled`、`preference`
+- 优先级：`-1`（高优先级）
+
+#### **NacosConfigDataLoader**
+- 实际从 Nacos 拉取配置
+- 支持配置刷新和容错机制
+- 错误处理和降级策略
+
+#### **NacosConfigManager**
+- 管理 Nacos 配置服务连接
+- 单例模式管理 ConfigService
+- 配置属性管理和生命周期管理
+
+### 📊 配置示例
+
+#### **服务特定配置**
+```yaml
+# config-init/config/integrated-account.yaml
+spring:
+  datasource:
+    url: jdbc:mysql://integrated-mysql:3306/integrated_account?useSSL=false&characterEncoding=utf8
+```
+
+#### **共享数据源配置**
+```yaml
+# config-init/config/datasource-config.yaml
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    username: 'root'
+    password: 'root'
+  main:
+    allow-bean-definition-overriding: true
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+```
+
+### ✨ 配置特性
+
+- **配置集中管理**：所有配置统一存储在 Nacos 中
+- **动态配置更新**：支持配置热更新，无需重启应用
+- **环境隔离**：通过 group 实现不同环境的配置隔离
+- **配置共享**：多个服务可以共享通用配置
+- **容错机制**：配置加载失败时应用仍能启动（optional 配置）
+- **配置加密**：支持敏感配置的加密存储
+- **配置版本管理**：支持配置的版本控制和回滚
+
 ## 🚀 快速开始
 
 ### 环境要求
