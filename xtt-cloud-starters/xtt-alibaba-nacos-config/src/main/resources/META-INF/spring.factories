@@ -1,0 +1,17 @@
+org.springframework.cloud.bootstrap.BootstrapConfiguration=\
+xtt.cloud.nacos.NacosConfigBootstrapConfiguration
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+xtt.cloud.nacos.diagnostics.analyzer.NacosConnectionFailureAnalyzer
+org.springframework.boot.env.PropertySourceLoader=\
+xtt.cloud.nacos.parser.NacosJsonPropertySourceLoader,\
+xtt.cloud.nacos.parser.NacosXmlPropertySourceLoader
+org.springframework.boot.SpringApplicationRunListener=\
+xtt.cloud.nacos.logging.NacosLoggingAppRunListener
+
+# ConfigData Location Resolvers
+org.springframework.boot.context.config.ConfigDataLocationResolver=\
+xtt.cloud.nacos.configdata.NacosConfigDataLocationResolver
+
+# ConfigData Loaders
+org.springframework.boot.context.config.ConfigDataLoader=\
+xtt.cloud.nacos.configdata.NacosConfigDataLoader

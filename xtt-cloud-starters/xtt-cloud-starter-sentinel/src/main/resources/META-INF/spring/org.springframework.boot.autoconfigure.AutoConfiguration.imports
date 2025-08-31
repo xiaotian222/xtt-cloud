@@ -1,0 +1,5 @@
+xtt.cloud.sentinel.SentinelWebAutoConfiguration
+xtt.cloud.sentinel.SentinelWebFluxAutoConfiguration
+xtt.cloud.sentinel.endpoint.SentinelEndpointAutoConfiguration
+xtt.cloud.sentinel.custom.SentinelAutoConfiguration
+xtt.cloud.sentinel.feign.SentinelFeignAutoConfiguration

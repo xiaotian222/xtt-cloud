@@ -1,0 +1,58 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>xtt.cloud</groupId>
+        <artifactId>xtt-cloud</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>xtt-cloud-starters</artifactId>
+    <packaging>pom</packaging>
+    <name>XTT Cloud Starters</name>
+    <description>XTT Cloud Starters</description>
+    
+    <modules>
+
+        <module>xtt-alibaba-nacos-config</module>
+        <module>xtt-cloud-starter-nacos-config</module>
+        <module>xtt-cloud-starter-nacos-discovery</module>
+        <module>xtt-cloud-starter-seata</module>
+        <module>xtt-cloud-starter-stream-rocketmq</module>
+        <module>xtt-cloud-starter-bus-rocketmq</module>
+        <module>xtt-cloud-starter-sidecar</module>
+        <module>xtt-cloud-circuitbreaker-sentinel</module>
+        <module>xtt-cloud-starter-sentinel</module>
+        <module>xtt-cloud-sentinel-datasource</module>
+        <module>xtt-cloud-sentinel-gateway</module>
+        <module>xtt-cloud-commons</module>
+        <module>xtt-cloud-starter-schedulerx</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-initialize</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-site</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

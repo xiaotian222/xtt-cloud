@@ -1,0 +1,3 @@
+xtt.cloud.circuitbreaker.sentinel.SentinelCircuitBreakerAutoConfiguration
+xtt.cloud.circuitbreaker.sentinel.ReactiveSentinelCircuitBreakerAutoConfiguration
+xtt.cloud.circuitbreaker.sentinel.feign.SentinelFeignClientAutoConfiguration

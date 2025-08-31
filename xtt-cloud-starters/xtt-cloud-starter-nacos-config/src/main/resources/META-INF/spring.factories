@@ -1,0 +1,7 @@
+org.springframework.cloud.bootstrap.BootstrapConfiguration=\
+xtt.cloud.nacos.NacosConfigSpringCloudBootstrapConfiguration
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+xtt.cloud.nacos.configdata.NacosConfigDataMissingEnvironmentPostProcessor.ImportExceptionFailureAnalyzer
+org.springframework.boot.env.EnvironmentPostProcessor=\
+xtt.cloud.nacos.configdata.NacosConfigDataMissingEnvironmentPostProcessor
+

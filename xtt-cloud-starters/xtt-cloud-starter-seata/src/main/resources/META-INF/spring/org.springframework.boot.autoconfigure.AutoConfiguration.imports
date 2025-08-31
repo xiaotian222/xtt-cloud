@@ -1,0 +1,3 @@
+xtt.cloud.seata.rest.SeataRestTemplateAutoConfiguration
+xtt.cloud.seata.web.SeataHandlerInterceptorConfiguration
+xtt.cloud.seata.feign.SeataFeignClientAutoConfiguration

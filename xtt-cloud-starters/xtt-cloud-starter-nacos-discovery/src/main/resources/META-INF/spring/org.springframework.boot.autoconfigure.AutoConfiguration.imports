@@ -1,0 +1,10 @@
+xtt.cloud.nacos.discovery.NacosDiscoveryAutoConfiguration
+xtt.cloud.nacos.endpoint.NacosDiscoveryEndpointAutoConfiguration
+xtt.cloud.nacos.registry.NacosServiceRegistryAutoConfiguration
+xtt.cloud.nacos.discovery.NacosDiscoveryClientConfiguration
+xtt.cloud.nacos.discovery.NacosDiscoveryHeartBeatConfiguration
+xtt.cloud.nacos.discovery.reactive.NacosReactiveDiscoveryClientConfiguration
+xtt.cloud.nacos.discovery.configclient.NacosConfigServerAutoConfiguration
+xtt.cloud.nacos.loadbalancer.LoadBalancerNacosAutoConfiguration
+xtt.cloud.nacos.NacosServiceAutoConfiguration
+xtt.cloud.nacos.util.UtilIPv6AutoConfiguration

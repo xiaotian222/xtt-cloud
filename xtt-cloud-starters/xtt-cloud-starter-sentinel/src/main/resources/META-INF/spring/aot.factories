@@ -1,0 +1,2 @@
+org.springframework.aot.hint.RuntimeHintsRegistrar=\
+xtt.cloud.sentinel.aot.hint.SentinelProtectInterceptorHints

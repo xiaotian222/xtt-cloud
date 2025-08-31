@@ -1,0 +1,3 @@
+xtt.cloud.sidecar.nacos.SidecarNacosAutoConfiguration
+xtt.cloud.sidecar.SidecarAutoConfiguration
+xtt.cloud.sidecar.consul.SidecarConsulAutoConfiguration

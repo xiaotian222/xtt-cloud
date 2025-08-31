@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+xtt.cloud.scheduling.schedulerx.SchedulerxAutoConfigure,\
+xtt.cloud.scheduling.shedlock.ShedLockAutoConfigure
