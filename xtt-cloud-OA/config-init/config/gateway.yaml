@@ -1,0 +1,10 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+#        - id: placeOrder
+#          uri: lb://integrated-order
+#          predicates:
+#            - Path=/order/create
+
+

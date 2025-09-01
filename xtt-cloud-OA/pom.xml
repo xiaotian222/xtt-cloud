@@ -11,24 +11,16 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>xtt-cloud-examples</artifactId>
+    <groupId>xtt.cloud.oa</groupId>
+    <artifactId>xtt-cloud-OA</artifactId>
     <packaging>pom</packaging>
-    <name>XTT Cloud Examples</name>
-    <description>Example showing how to use features of XTT Cloud</description>
+    <name>XTT Cloud OA</name>
 
     <modules>
-
-        <module>integrated-storage</module>
-        <module>integrated-account</module>
-        <module>integrated-order</module>
-        <module>integrated-gateway</module>
-        <module>integrated-praise-provider</module>
-        <module>integrated-praise-consumer</module>
-		<module>integrated-frontend</module>
-        <module>integrated-common</module>
-
+        <module>gateway</module>
+        <module>auth</module>
+        <module>common</module>
     </modules>
-
 
     <build>
         <plugins>

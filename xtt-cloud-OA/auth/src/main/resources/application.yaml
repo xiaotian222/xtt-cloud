@@ -1,0 +1,30 @@
+server:
+  port: 8020
+
+spring:
+  application:
+    name: auth-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos-server:8848
+        group: oa
+      config:
+        server-addr: nacos-server:8848
+        group: oa
+        file-extension: yaml
+  config:
+    import:
+      - optional:nacos:auth-service.yaml
+
+# JWT Configuration
+jwt:
+  secret: xtt-cloud-oa-jwt-secret-key-2023
+  expiration: 86400000  # 24 hours in milliseconds
+  refresh-expiration: 604800000  # 7 days in milliseconds
+
+# Logging
+logging:
+  level:
+    xtt.cloud.oa.auth: DEBUG
+    org.springframework.security: DEBUG

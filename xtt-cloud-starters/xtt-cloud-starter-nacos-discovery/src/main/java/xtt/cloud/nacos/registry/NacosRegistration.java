@@ -34,7 +34,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * @author xiaojing
- * @author changjin wei(魏昌�?
+ * @author changjin wei
  */
 public class NacosRegistration implements Registration {
 

@@ -1,0 +1,16 @@
+server:
+  port: 30010
+spring:
+  application:
+    name: gateway
+  cloud:
+    nacos:
+      config:
+        server-addr: nacos-server:8848
+        group: oa
+        file-extension: yaml
+      discovery:
+        server-addr: nacos-server:8848
+        group: oa
+  config:
+    import: optional:nacos:gateway.yaml
