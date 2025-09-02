@@ -1,7 +1,7 @@
 # Auth Service Configuration
 spring:
   application:
-    name: auth-service
+    name: auth
   cloud:
     nacos:
       discovery:

@@ -47,6 +47,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.reactive.result.view.ViewResolver;
 import org.springframework.web.server.ServerWebExchange;
+import xtt.cloud.gateway.filter.AuthGlobalFilter;
 
 /**
  * @author TrevorLink
@@ -68,6 +69,12 @@ public class GatewayConfig {
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	public GlobalFilter sentinelGatewayFilter() {
 		return new SentinelGatewayFilter();
+	}
+
+	@Bean
+	@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+	public GlobalFilter authGlobalFilter() {
+		return new AuthGlobalFilter();
 	}
 
 	@PostConstruct

@@ -7,10 +7,33 @@ spring:
     nacos:
       config:
         server-addr: nacos-server:8848
-        group: oa
+        group: xtt-cloud-oa
         file-extension: yaml
       discovery:
         server-addr: nacos-server:8848
-        group: oa
+        group: xtt-cloud-oa
   config:
     import: optional:nacos:gateway.yaml
+
+# JWT Configuration
+jwt:
+  secret: xtt-cloud-oa-jwt-secret-key-2023
+  expiration: 86400000  # 24 hours in milliseconds
+  refresh-expiration: 604800000  # 7 days in milliseconds
+
+# Gateway Auth Configuration
+gateway:
+  auth:
+    enabled: true
+    skip-paths:
+      - /api/auth/login
+      - /api/auth/register
+      - /api/auth/refresh
+      - /api/auth/logout
+      - /actuator/health
+      - /actuator/info
+
+# Logging
+logging:
+  level:
+    xtt.cloud.gateway: DEBUG

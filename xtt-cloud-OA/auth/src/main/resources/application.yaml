@@ -3,15 +3,15 @@ server:
 
 spring:
   application:
-    name: auth-service
+    name: auth
   cloud:
     nacos:
       discovery:
         server-addr: nacos-server:8848
-        group: oa
+        group: xtt-cloud-oa
       config:
         server-addr: nacos-server:8848
-        group: oa
+        group: xtt-cloud-oa
         file-extension: yaml
   config:
     import:

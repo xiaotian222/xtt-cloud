@@ -1,0 +1,44 @@
+# Platform Service Configuration
+spring:
+  application:
+    name: platform
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos-server:8848
+        group: xtt-cloud-oa
+      config:
+        server-addr: nacos-server:8848
+        group: xtt-cloud-oa
+        file-extension: yaml
+
+  datasource:
+    url: jdbc:mysql://mysql:3306/platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&useSSL=false
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+
+server:
+  port: 8085
+
+logging:
+  level:
+    xtt.cloud.oa.platform: INFO
+    org.hibernate.SQL: WARN
+
+

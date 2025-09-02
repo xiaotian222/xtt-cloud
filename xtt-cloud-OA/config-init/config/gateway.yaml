@@ -2,9 +2,43 @@ spring:
   cloud:
     gateway:
       routes:
-#        - id: placeOrder
-#          uri: lb://integrated-order
-#          predicates:
-#            - Path=/order/create
+        # OA Platform 服务路由
+        - id: platform
+          uri: lb://platform
+          predicates:
+            - Path=/api/platform/**
+          filters:
+            - StripPrefix=1
+
+        # OA Auth 服务路由（如有需要）
+        - id: auth
+          uri: lb://auth
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
+
+# JWT Configuration
+jwt:
+  secret: xtt-cloud-oa-jwt-secret-key-2023
+  expiration: 86400000  # 24 hours in milliseconds
+  refresh-expiration: 604800000  # 7 days in milliseconds
+
+# Gateway Auth Configuration
+gateway:
+  auth:
+    enabled: true
+    skip-paths:
+      - /api/auth/login
+      - /api/auth/register
+      - /api/auth/refresh
+      - /api/auth/logout
+      - /actuator/health
+      - /actuator/info
+
+# Logging
+logging:
+  level:
+    xtt.cloud.gateway: DEBUG
 
 
