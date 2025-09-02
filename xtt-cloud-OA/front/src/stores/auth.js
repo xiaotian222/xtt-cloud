@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as loginApi, logout as logoutApi, getUserInfo as getUserInfoApi, refreshToken as refreshTokenApi } from '@/api/auth'
+import { /* permissions api */ } from '@/api/platform'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -17,7 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await loginApi(credentials)
       
       // 适配后端响应格式
-      if (response.code === 200 || response.success || response.status === 200) {
+      if (response.code === 2001 || response.success || response.status === 200) {
         const data = response.data || response
         token.value = data.token
         refreshTokenValue.value = data.refreshToken
@@ -32,6 +33,16 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('refreshToken', data.refreshToken)
         localStorage.setItem('user', JSON.stringify(user.value))
         
+        // 拉取权限集合（基于用户名）并缓存到本地，供前端控制显隐
+        try {
+          const resp = await (await import('@/api/platform')).then(m => m)
+          const permsResp = await resp.getUserPermsByUsername?.(data.username)
+          if (permsResp && permsResp.data) {
+            localStorage.setItem('perms', JSON.stringify(permsResp.data))
+          }
+        } catch (e) {
+          console.warn('获取权限集合失败(忽略)：', e)
+        }
         return { success: true }
       } else {
         return { success: false, message: response.message || response.msg || '登录失败' }
@@ -122,6 +133,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     refreshTokenValue,
     user,
+    // 读取本地权限集合的便捷 getter
     loading,
     isAuthenticated,
     login,

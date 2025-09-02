@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { hasPerm } from '@/utils/permissions'
 
 const routes = [
   {
@@ -25,6 +26,12 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
+    path: '/platform',
+    name: 'Platform',
+    component: () => import('@/views/platform/Index.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue')
@@ -43,6 +50,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.meta.requiresAdmin && authStore.user.role !== 'ROLE_ADMIN') {
+    next('/dashboard')
+  } else if (to.meta && to.meta.requirePerm && !hasPerm(to.meta.requirePerm)) {
     next('/dashboard')
   } else if (to.path === '/login' && authStore.isAuthenticated) {
     next('/dashboard')

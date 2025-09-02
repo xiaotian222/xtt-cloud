@@ -1,0 +1,33 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: oa-platform
+  datasource:
+    url: jdbc:mysql://localhost:3306/oa_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: root
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000 # 1小时
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+

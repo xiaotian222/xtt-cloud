@@ -28,13 +28,23 @@ service.interceptors.response.use(
   response => {
     const res = response.data
     
-    // 适配后端响应格式
-    if (res.code === 200 || res.success || res.status === 200) {
+    // 适配后端响应格式（兼容 code=0 / code=200 / success=true 等）
+    const isSuccess =
+      response.status === 2001 ||
+      response.status === 200 ||
+      res?.success === true ||
+      res?.status === 200 ||
+      res?.code === 200 ||
+      res?.code === 0 ||
+      // 登录这类接口有时直接返回 token 放在 data 或根节点
+      !!res?.token || !!res?.data?.token
+
+    if (isSuccess) {
       return res
-    } else {
-      ElMessage.error(res.message || res.msg || '请求失败')
-      return Promise.reject(new Error(res.message || res.msg || '请求失败'))
     }
+
+    ElMessage.error(res?.message || res?.msg || '请求失败')
+    return Promise.reject(new Error(res?.message || res?.msg || '请求失败'))
   },
   error => {
     console.error('响应错误:', error)
