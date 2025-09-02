@@ -10,6 +10,7 @@ import xtt.cloud.oa.platform.infrastructure.cache.PermissionCache;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class RoleService {
@@ -43,6 +44,24 @@ public class RoleService {
             saved.getUsers().forEach(u -> permissionCache.evictUserPerms(u.getId()));
         }
         return saved;
+    }
+
+    // 对外服务方法
+    public Optional<Role> findByCode(String code) {
+        return roleRepository.findByCode(code);
+    }
+
+    public Set<Permission> getRolePermissions(Long roleId) {
+        Role role = roleRepository.findById(roleId).orElseThrow();
+        return role.getPermissions();
+    }
+
+    public List<Role> findByIds(List<Long> roleIds) {
+        return roleRepository.findAllById(roleIds);
+    }
+
+    public List<Role> findByCodes(List<String> codes) {
+        return roleRepository.findByCodeIn(codes);
     }
 }
 

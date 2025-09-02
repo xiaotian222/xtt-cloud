@@ -2,6 +2,7 @@ package xtt.cloud.oa.platform.application;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xtt.cloud.oa.platform.domain.entity.Department;
 import xtt.cloud.oa.platform.domain.entity.Role;
 import xtt.cloud.oa.platform.domain.entity.User;
 import xtt.cloud.oa.platform.domain.repository.RoleRepository;
@@ -11,6 +12,7 @@ import xtt.cloud.oa.platform.infrastructure.cache.PermissionCache;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -52,6 +54,29 @@ public class UserService {
     public Set<String> getUserPermissionsByUsername(String username) {
         User user = userRepository.findByUsername(username).orElseThrow();
         return permissionCache.loadUserPermissions(user);
+    }
+
+    // 对外服务方法
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    public Set<Role> getUserRoles(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        return user.getRoles();
+    }
+
+    public Set<Department> getUserDepartments(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        return user.getDepartments();
+    }
+
+    public List<User> findByIds(List<Long> userIds) {
+        return userRepository.findAllById(userIds);
+    }
+
+    public List<User> findByUsernames(List<String> usernames) {
+        return userRepository.findByUsernameIn(usernames);
     }
 }
 

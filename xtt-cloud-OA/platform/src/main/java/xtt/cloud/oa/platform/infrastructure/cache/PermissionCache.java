@@ -23,6 +23,13 @@ public class PermissionCache {
 
     @CacheEvict(cacheNames = USER_PERMS_CACHE, key = "#userId")
     public void evictUserPerms(Long userId) { }
+
+    @Cacheable(cacheNames = USER_PERMS_CACHE, key = "#username")
+    public Set<String> loadUserPermissions(String username) {
+        // 这个方法需要从 UserService 中调用，这里先返回空集合
+        // 实际实现中应该通过 UserService 获取用户信息
+        return java.util.Set.of();
+    }
 }
 
 
