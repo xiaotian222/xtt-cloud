@@ -36,20 +36,37 @@ public class JwtUtil {
     }
 
     /**
+     * Generate JWT token with user ID
+     */
+    public String generateToken(String username, String role, Long userId) {
+        return generateToken(username, role, userId, expiration);
+    }
+
+    /**
      * Generate refresh token
      */
     public String generateRefreshToken(String username) {
-        return generateToken(username, null, refreshExpiration);
+        return generateToken(username, null, null, refreshExpiration);
+    }
+
+    /**
+     * Generate refresh token with user ID
+     */
+    public String generateRefreshToken(String username, Long userId) {
+        return generateToken(username, null, userId, refreshExpiration);
     }
 
     /**
      * Generate token with custom expiration
      */
-    private String generateToken(String username, String role, long expiration) {
+    private String generateToken(String username, String role, Long userId, long expiration) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("username", username);
         if (role != null) {
             claims.put("role", role);
+        }
+        if (userId != null) {
+            claims.put("userId", userId);
         }
         
         return Jwts.builder()
@@ -80,6 +97,21 @@ public class JwtUtil {
      */
     public String extractRole(String token) {
         return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
+    /**
+     * Extract user ID from token
+     */
+    public Long extractUserId(String token) {
+        return extractClaim(token, claims -> {
+            Object userId = claims.get("userId");
+            if (userId instanceof Integer) {
+                return ((Integer) userId).longValue();
+            } else if (userId instanceof Long) {
+                return (Long) userId;
+            }
+            return null;
+        });
     }
 
     /**

@@ -14,18 +14,19 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8020', // 直接使用静态配置
+        target: 'http://localhost:30010',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        // 不重写路径，保留 /api 前缀以匹配网关路由
+        // rewrite: (path) => path.replace(/^\/api/, ''),
         configure: (proxy, options) => {
           proxy.on('error', (err, req, res) => {
             console.log('proxy error', err)
           })
           proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log('Sending Request to the Target:', req.method, req.url)
+            console.log('Sending Request to the Target:', req.method, 'http://localhost:30010' + req.url)
           })
           proxy.on('proxyRes', (proxyRes, req, res) => {
-            console.log('Received Response from the Target:', proxyRes.statusCode, req.url)
+            console.log('Received Response from the Target:', proxyRes.statusCode,'http://localhost:30010' + req.url)
           })
         }
       }

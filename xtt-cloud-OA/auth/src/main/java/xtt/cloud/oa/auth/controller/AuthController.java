@@ -3,15 +3,17 @@ package xtt.cloud.oa.auth.controller;
 import xtt.cloud.oa.common.Result;
 import xtt.cloud.oa.auth.dto.LoginRequest;
 import xtt.cloud.oa.auth.dto.LoginResponse;
-import xtt.cloud.oa.auth.entity.User;
+import xtt.cloud.oa.common.dto.UserInfoDto;
 import xtt.cloud.oa.auth.service.AuthService;
 import xtt.cloud.oa.auth.service.UserService;
+import xtt.cloud.oa.auth.util.SecurityContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Authentication Controller
@@ -70,28 +72,34 @@ public class AuthController {
     }
 
     /**
-     * Get user info from token
+     * Get current user info from SecurityContext
      */
     @GetMapping("/user")
-    public Result<User> getUserInfo(HttpServletRequest request) {
+    public Result<UserInfoDto> getCurrentUserInfo() {
         try {
-            String token = extractTokenFromRequest(request);
-            if (token == null) {
-                return Result.error("No token provided");
+            if (!SecurityContextUtil.isAuthenticated()) {
+                return Result.error("User not authenticated");
             }
             
-            User user = authService.getUserFromToken(token);
-            if (user == null) {
-                return Result.error("Invalid token");
+            String username = SecurityContextUtil.getCurrentUsername();
+            if (username == null) {
+                return Result.error("Username not found in token");
             }
             
-            // 不返回密码信息
-            user.setPassword(null);
-            return Result.success(user);
+            // 从 Platform 服务获取用户信息
+            Optional<UserInfoDto> userOpt = userService.findByUsername(username);
+            if (!userOpt.isPresent()) {
+                return Result.error("User not found");
+            }
+            
+            return Result.success(userOpt.get());
         } catch (Exception e) {
             return Result.error("Failed to get user info: " + e.getMessage());
         }
     }
+
+    // 根据用户 ID 获取用户信息的功能已移至 Platform 服务
+    // 认证服务专注于认证和授权功能
 
     /**
      * Logout endpoint
@@ -109,37 +117,8 @@ public class AuthController {
         }
     }
 
-    /**
-     * Get all users (for testing purposes)
-     */
-    @GetMapping("/users")
-    public Result<Map<String, User>> getAllUsers() {
-        try {
-            Map<String, User> users = userService.getAllUsers();
-            // 不返回密码信息
-            users.values().forEach(user -> user.setPassword(null));
-            return Result.success(users);
-        } catch (Exception e) {
-            return Result.error("Failed to get users: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Add new user (for testing purposes)
-     */
-    @PostMapping("/users")
-    public Result<User> addUser(@RequestParam String username, 
-                               @RequestParam String password, 
-                               @RequestParam String role, 
-                               @RequestParam(required = false) String email) {
-        try {
-            User user = userService.addUser(username, password, role, email);
-            user.setPassword(null); // 不返回密码
-            return Result.success(user);
-        } catch (Exception e) {
-            return Result.error("Failed to add user: " + e.getMessage());
-        }
-    }
+    // 用户管理功能已移至 Platform 服务
+    // 认证服务专注于认证和授权功能
 
     /**
      * Extract token from request header

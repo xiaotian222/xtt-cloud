@@ -219,7 +219,17 @@ public class NacosConfigDataLocationResolver
 
 	private String groupFor(URI uri, NacosConfigProperties properties) {
 		Map<String, String> queryMap = getQueryMap(uri);
-		return queryMap.containsKey(GROUP) ? queryMap.get(GROUP) : properties.getGroup();
+		// 优先使用 URI 中的 group 参数，如果没有则使用配置文件中的 group
+		if (queryMap.containsKey(GROUP)) {
+			return queryMap.get(GROUP);
+		}
+		// 确保从配置文件中正确读取 group 设置
+		String configGroup = properties.getGroup();
+		if (configGroup != null && !configGroup.isEmpty() && !"DEFAULT_GROUP".equals(configGroup)) {
+			return configGroup;
+		}
+		// 如果配置文件中没有设置 group，则使用默认值
+		return "DEFAULT_GROUP";
 	}
 
 	private Map<String, String> getQueryMap(URI uri) {

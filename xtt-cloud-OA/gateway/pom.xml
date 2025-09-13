@@ -11,7 +11,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>gateway</artifactId>
-	<name>XTT Cloud Integrated Gateway Example</name>
+	<name>OA Gateway Service</name>
 
 	<dependencies>
 		<dependency>
@@ -43,18 +43,14 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
-            <scope>annotationProcessor</scope>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>annotationProcessor</scope>
-        </dependency>
+        
         
         <!-- JWT Dependencies -->
         <dependency>

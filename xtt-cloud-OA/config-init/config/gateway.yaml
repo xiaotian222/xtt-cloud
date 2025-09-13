@@ -9,7 +9,6 @@ spring:
             - Path=/api/platform/**
           filters:
             - StripPrefix=1
-
         # OA Auth 服务路由（如有需要）
         - id: auth
           uri: lb://auth

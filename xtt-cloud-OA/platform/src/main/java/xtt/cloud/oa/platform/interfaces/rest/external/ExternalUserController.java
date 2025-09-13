@@ -1,6 +1,6 @@
 package xtt.cloud.oa.platform.interfaces.rest.external;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.platform.application.UserService;
@@ -20,11 +20,16 @@ import java.util.Set;
  */
 @RestController
 @RequestMapping("/api/platform/external/users")
-@RequiredArgsConstructor
 public class ExternalUserController {
 
-    private final UserService userService;
-    private final UserMapper userMapper;
+    private UserService userService;
+    private UserMapper userMapper;
+
+    @Autowired
+    public ExternalUserController(UserService userService, UserMapper userMapper) {
+        this.userService = userService;
+        this.userMapper = userMapper;
+    }
 
     /**
      * 根据用户名获取用户信息（包含角色和权限）
@@ -114,6 +119,16 @@ public class ExternalUserController {
     public ResponseEntity<Boolean> userExists(@PathVariable String username) {
         boolean exists = userService.findByUsername(username).isPresent();
         return ResponseEntity.ok(exists);
+    }
+
+    /**
+     * 验证用户密码
+     */
+    @GetMapping("/validate")
+    public ResponseEntity<Boolean> validateUserPassword(@RequestParam("username") String username, 
+                                                       @RequestParam("password") String password) {
+        boolean isValid = userService.validateUserPassword(username, password);
+        return ResponseEntity.ok(isValid);
     }
 
     /**

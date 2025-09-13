@@ -1,22 +1,14 @@
 package xtt.cloud.oa.platform.domain.entity;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "sys_permission")
 public class Permission {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, unique = true, length = 128)
     private String code;
-
-    @Column(nullable = false, length = 128)
     private String name;
-
-    @Column(nullable = false, length = 32)
     private String type; // api | menu | btn
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -26,6 +18,10 @@ public class Permission {
     public void setName(String name) { this.name = name; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
 
 

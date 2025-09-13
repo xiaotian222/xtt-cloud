@@ -1,6 +1,6 @@
 package xtt.cloud.oa.platform.interfaces.rest.external;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.platform.application.RoleService;
@@ -19,11 +19,16 @@ import java.util.Set;
  */
 @RestController
 @RequestMapping("/api/platform/external/roles")
-@RequiredArgsConstructor
 public class ExternalRoleController {
 
-    private final RoleService roleService;
-    private final RoleMapper roleMapper;
+    private RoleService roleService;
+    private RoleMapper roleMapper;
+
+    @Autowired
+    public ExternalRoleController(RoleService roleService, RoleMapper roleMapper) {
+        this.roleService = roleService;
+        this.roleMapper = roleMapper;
+    }
 
     /**
      * 根据角色代码获取角色信息

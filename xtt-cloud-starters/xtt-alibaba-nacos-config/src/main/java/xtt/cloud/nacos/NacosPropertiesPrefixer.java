@@ -46,7 +46,8 @@ public final class NacosPropertiesPrefixer {
 	}
 
 	public static String getPrefix(Environment environment) {
-		String prefix = "spring.nacos";
+        //这里 spring.nacos -> spring.cloud.nacos 不知道为什么原来的作者为什么写错，吊毛个坑b
+		String prefix = "spring.cloud.nacos";
 		String prefixFromProperties = environment.getProperty("spring.nacos.properties.prefix");
 		if (StringUtils.isBlank(prefixFromProperties)) {
 			if (StringUtils.isNotBlank(NacosPropertiesPrefixer.PREFIX)) {
@@ -63,8 +64,10 @@ public final class NacosPropertiesPrefixer {
 		return prefix;
 	}
 
+
 	public static String getPrefix(Binder binder) {
-		String prefix = "spring.nacos";
+        //这里 spring.nacos -> spring.cloud.nacos 不知道为什么原来的作者为什么写错，吊毛个坑b
+		String prefix = "spring.cloud.nacos";
 		BindResult<String> bind = binder.bind("spring.nacos.properties.prefix", String.class);
 		if (!bind.isBound()) {
 			if (StringUtils.isNotBlank(NacosPropertiesPrefixer.PREFIX)) {

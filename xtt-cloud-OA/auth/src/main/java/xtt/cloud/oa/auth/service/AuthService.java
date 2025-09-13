@@ -2,7 +2,7 @@ package xtt.cloud.oa.auth.service;
 
 import xtt.cloud.oa.auth.dto.LoginRequest;
 import xtt.cloud.oa.auth.dto.LoginResponse;
-import xtt.cloud.oa.auth.entity.User;
+import xtt.cloud.oa.common.dto.UserInfoDto;
 import xtt.cloud.oa.auth.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,18 +41,19 @@ public class AuthService {
         }
 
         // 获取用户信息
-        Optional<User> userOpt = userService.findByUsername(username);
+        Optional<UserInfoDto> userOpt = userService.findByUsername(username);
         if (!userOpt.isPresent()) {
             throw new RuntimeException("User not found");
         }
 
-        User user = userOpt.get();
+        UserInfoDto user = userOpt.get();
+        String role = userService.getUserPrimaryRole(username);
 
-        // 生成 JWT token
-        String token = jwtUtil.generateToken(username, user.getRole());
-        String refreshToken = jwtUtil.generateRefreshToken(username);
+        // 生成 JWT token（包含用户 ID）
+        String token = jwtUtil.generateToken(username, role, user.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(username, user.getId());
 
-        return new LoginResponse(token, refreshToken, username, user.getRole(), expiration);
+        return new LoginResponse(token, refreshToken, username, role, expiration);
     }
 
     /**
@@ -68,18 +69,19 @@ public class AuthService {
             }
 
             // 获取用户信息
-            Optional<User> userOpt = userService.findByUsername(username);
+            Optional<UserInfoDto> userOpt = userService.findByUsername(username);
             if (!userOpt.isPresent()) {
                 throw new RuntimeException("User not found");
             }
 
-            User user = userOpt.get();
+            UserInfoDto user = userOpt.get();
+            String role = userService.getUserPrimaryRole(username);
 
-            // 生成新的 token
-            String newToken = jwtUtil.generateToken(username, user.getRole());
-            String newRefreshToken = jwtUtil.generateRefreshToken(username);
+            // 生成新的 token（包含用户 ID）
+            String newToken = jwtUtil.generateToken(username, role, user.getId());
+            String newRefreshToken = jwtUtil.generateRefreshToken(username, user.getId());
 
-            return new LoginResponse(newToken, newRefreshToken, username, user.getRole(), expiration);
+            return new LoginResponse(newToken, newRefreshToken, username, role, expiration);
         } catch (Exception e) {
             throw new RuntimeException("Invalid refresh token");
         }
@@ -98,16 +100,18 @@ public class AuthService {
     }
 
     /**
-     * Get user info from token
+     * Extract username from token
      */
-    public User getUserFromToken(String token) {
+    public String extractUsernameFromToken(String token) {
         try {
             String username = jwtUtil.extractUsername(token);
-            Optional<User> userOpt = userService.findByUsername(username);
-            return userOpt.orElse(null);
+            if (username != null && jwtUtil.validateToken(token, username)) {
+                return username;
+            }
         } catch (Exception e) {
-            return null;
+            // Token validation failed
         }
+        return null;
     }
 
     /**

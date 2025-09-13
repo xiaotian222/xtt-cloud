@@ -12,6 +12,19 @@ spring:
         group: xtt-cloud-oa
         file-extension: yaml
 
+#openFeign
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 10000
+        logger-level: basic
+  httpclient:
+    enabled: true
+    connection-timeout: 5000
+    connection-timer-repeat: 3000
+
 # JWT Configuration
 jwt:
   secret: xtt-cloud-oa-jwt-secret-key-2023

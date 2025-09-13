@@ -6,13 +6,13 @@
 
     <parent>
         <groupId>xtt.cloud.oa</groupId>
-        <artifactId>xtt-cloud-oa</artifactId>
+        <artifactId>xtt-cloud-OA</artifactId>
         <version>2023.0.3.3</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>common</artifactId>
-    <name>common</name>
+    <name>OA common</name>
     <description>OA System Common Module</description>
 
     <properties>

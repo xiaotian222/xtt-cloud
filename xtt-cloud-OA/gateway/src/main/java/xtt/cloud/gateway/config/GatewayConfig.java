@@ -71,11 +71,7 @@ public class GatewayConfig {
 		return new SentinelGatewayFilter();
 	}
 
-	@Bean
-	@Order(Ordered.HIGHEST_PRECEDENCE + 1)
-	public GlobalFilter authGlobalFilter() {
-		return new AuthGlobalFilter();
-	}
+	// AuthGlobalFilter 已通过 @Component 自动注册，无需在此重复声明
 
 	@PostConstruct
 	public void initGatewayRules() {

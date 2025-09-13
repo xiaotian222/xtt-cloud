@@ -5,6 +5,7 @@ import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.stereotype.Component;
+import xtt.cloud.oa.platform.domain.mapper.AuditLogMapper;
 
 import java.time.LocalDateTime;
 import java.util.logging.Logger;
@@ -17,10 +18,10 @@ public class AuditAspect {
     @Pointcut("within(xtt.cloud.oa.platform.interfaces.rest..*)")
     public void restLayer() {}
 
-    private final AuditLogRepository repository;
+    private final AuditLogMapper auditLogMapper;
 
-    public AuditAspect(AuditLogRepository repository) {
-        this.repository = repository;
+    public AuditAspect(AuditLogMapper auditLogMapper) {
+        this.auditLogMapper = auditLogMapper;
     }
 
     @AfterReturning(pointcut = "restLayer()")
@@ -31,7 +32,8 @@ public class AuditAspect {
         al.setResource(jp.getSignature().toShortString());
         al.setMethod("HTTP");
         al.setResult("SUCCESS");
-        repository.save(al);
+        al.setCreatedAt(LocalDateTime.now());
+        auditLogMapper.insert(al);
         log.info(() -> "AUDIT SAVED -> " + jp.getSignature());
     }
 }

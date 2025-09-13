@@ -204,6 +204,13 @@ public class NacosConfigProperties {
 			this.setPassword(
 					environment.resolvePlaceholders("${" + prefix + ".password:}"));
 		}
+		// 添加 group 配置的读取
+		if (StringUtils.isEmpty(this.getGroup()) || "DEFAULT_GROUP".equals(this.getGroup())) {
+			String group = environment.resolvePlaceholders("${" + prefix + ".config.group:}");
+			if (StringUtils.isNotEmpty(group)) {
+				this.setGroup(group);
+			}
+		}
 	}
 
 	// todo sts support

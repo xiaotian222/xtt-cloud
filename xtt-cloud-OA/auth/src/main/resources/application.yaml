@@ -15,13 +15,26 @@ spring:
         file-extension: yaml
   config:
     import:
-      - optional:nacos:auth-service.yaml
+      - optional:nacos:auth.yaml
+
+# Feign 配置
+#feign:
+#  client:
+#    config:
+#      default:
+#        connect-timeout: 5000
+#        read-timeout: 10000
+#        logger-level: basic
+#  httpclient:
+#    enabled: true
+#    connection-timeout: 5000
+#    connection-timer-repeat: 3000
 
 # JWT Configuration
-jwt:
-  secret: xtt-cloud-oa-jwt-secret-key-2023
-  expiration: 86400000  # 24 hours in milliseconds
-  refresh-expiration: 604800000  # 7 days in milliseconds
+#jwt:
+#  secret: xtt-cloud-oa-jwt-secret-key-2023
+#  expiration: 86400000  # 24 hours in milliseconds
+#  refresh-expiration: 604800000  # 7 days in milliseconds
 
 # Logging
 logging:

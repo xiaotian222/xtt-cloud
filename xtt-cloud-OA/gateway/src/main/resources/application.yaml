@@ -9,31 +9,32 @@ spring:
         server-addr: nacos-server:8848
         group: xtt-cloud-oa
         file-extension: yaml
+        namespace: public
       discovery:
         server-addr: nacos-server:8848
         group: xtt-cloud-oa
+        namespace: public
   config:
     import: optional:nacos:gateway.yaml
 
 # JWT Configuration
-jwt:
-  secret: xtt-cloud-oa-jwt-secret-key-2023
-  expiration: 86400000  # 24 hours in milliseconds
-  refresh-expiration: 604800000  # 7 days in milliseconds
+#jwt:
+#  secret: xtt-cloud-oa-jwt-secret-key-2023
+#  expiration: 86400000  # 24 hours in milliseconds
+#  refresh-expiration: 604800000  # 7 days in milliseconds
 
-# Gateway Auth Configuration
-gateway:
-  auth:
-    enabled: true
-    skip-paths:
-      - /api/auth/login
-      - /api/auth/register
-      - /api/auth/refresh
-      - /api/auth/logout
-      - /actuator/health
-      - /actuator/info
+# 其余 gateway/jwt/logging 等统一在 config-init/config/gateway.yaml 维护
 
-# Logging
+# 启动时打印配置信息
 logging:
   level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: DEBUG
+    org.springframework.cloud.gateway.filter.WeightCalculatorWebFilter: DEBUG
+    org.springframework.cloud.gateway.handler.predicate: DEBUG
+    org.springframework.cloud.gateway.filter: DEBUG
     xtt.cloud.gateway: DEBUG
+    org.springframework.boot.context.config: DEBUG
+    org.springframework.cloud.nacos: DEBUG
+    com.alibaba.nacos: DEBUG
+    com.alibaba.cloud.nacos: DEBUG

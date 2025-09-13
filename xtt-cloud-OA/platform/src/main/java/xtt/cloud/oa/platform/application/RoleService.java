@@ -4,64 +4,95 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xtt.cloud.oa.platform.domain.entity.Permission;
 import xtt.cloud.oa.platform.domain.entity.Role;
-import xtt.cloud.oa.platform.domain.repository.RoleRepository;
-import xtt.cloud.oa.platform.domain.repository.PermissionRepository;
+import xtt.cloud.oa.platform.domain.mapper.PermissionMapper;
+import xtt.cloud.oa.platform.domain.mapper.RoleMapper;
+import xtt.cloud.oa.platform.domain.mapper.RolePermissionMapper;
 import xtt.cloud.oa.platform.infrastructure.cache.PermissionCache;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 @Service
 public class RoleService {
-    private final RoleRepository roleRepository;
-    private final PermissionRepository permissionRepository;
+    private final RoleMapper roleMapper;
+    private final PermissionMapper permissionMapper;
+    private final RolePermissionMapper rolePermissionMapper;
     private final PermissionCache permissionCache;
-    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository, PermissionCache permissionCache) {
-        this.roleRepository = roleRepository;
-        this.permissionRepository = permissionRepository;
+    
+    public RoleService(RoleMapper roleMapper, PermissionMapper permissionMapper, 
+                      RolePermissionMapper rolePermissionMapper, PermissionCache permissionCache) {
+        this.roleMapper = roleMapper;
+        this.permissionMapper = permissionMapper;
+        this.rolePermissionMapper = rolePermissionMapper;
         this.permissionCache = permissionCache;
     }
 
-    public List<Role> list() { return roleRepository.findAll(); }
-    public Optional<Role> get(Long id) { return roleRepository.findById(id); }
+    public List<Role> list() { 
+        return roleMapper.selectAll(); 
+    }
+    
+    public Optional<Role> get(Long id) { 
+        return roleMapper.findById(id); 
+    }
 
     @Transactional
-    public Role save(Role role) { return roleRepository.save(role); }
+    public Role save(Role role) { 
+        if (role.getId() == null) {
+            // 新增角色
+            role.setCreatedAt(LocalDateTime.now());
+            role.setUpdatedAt(LocalDateTime.now());
+            roleMapper.insert(role);
+        } else {
+            // 更新角色
+            role.setUpdatedAt(LocalDateTime.now());
+            roleMapper.update(role);
+        }
+        return role;
+    }
 
     @Transactional
-    public void delete(Long id) { roleRepository.deleteById(id); }
+    public void delete(Long id) { 
+        roleMapper.deleteById(id); 
+    }
 
     @Transactional
     public Role grantPermissions(Long roleId, List<Long> permIds) {
-        Role role = roleRepository.findById(roleId).orElseThrow();
-        var perms = permissionRepository.findAllById(permIds);
-        role.getPermissions().clear();
-        role.getPermissions().addAll(perms);
-        Role saved = roleRepository.save(role);
-        // 失效该角色下所有用户的权限缓存
-        if (saved.getUsers() != null) {
-            saved.getUsers().forEach(u -> permissionCache.evictUserPerms(u.getId()));
+        Role role = roleMapper.findById(roleId).orElseThrow();
+        
+        // 删除角色现有权限关联
+        rolePermissionMapper.deleteRolePermissions(roleId);
+        
+        // 添加新权限关联
+        if (!permIds.isEmpty()) {
+            rolePermissionMapper.insertRolePermissions(roleId, permIds);
         }
-        return saved;
+        
+        // 失效该角色下所有用户的权限缓存
+        // 注意：这里需要查询该角色下的所有用户，然后失效缓存
+        // 由于MyBatis没有直接的关联查询，这里简化处理
+        permissionCache.evictAllUserPerms();
+        
+        return role;
     }
 
     // 对外服务方法
     public Optional<Role> findByCode(String code) {
-        return roleRepository.findByCode(code);
+        return roleMapper.findByCode(code);
     }
 
     public Set<Permission> getRolePermissions(Long roleId) {
-        Role role = roleRepository.findById(roleId).orElseThrow();
-        return role.getPermissions();
+        List<Permission> permissions = rolePermissionMapper.selectPermissionsByRoleId(roleId);
+        return Set.copyOf(permissions);
     }
 
     public List<Role> findByIds(List<Long> roleIds) {
-        return roleRepository.findAllById(roleIds);
+        return roleMapper.selectByIds(roleIds);
     }
 
     public List<Role> findByCodes(List<String> codes) {
-        return roleRepository.findByCodeIn(codes);
+        return roleMapper.selectByCodes(codes);
     }
 }
 

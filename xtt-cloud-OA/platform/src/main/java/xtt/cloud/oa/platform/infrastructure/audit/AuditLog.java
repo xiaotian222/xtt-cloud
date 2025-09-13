@@ -1,12 +1,8 @@
 package xtt.cloud.oa.platform.infrastructure.audit;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "sys_audit_log")
 public class AuditLog {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String username;
     private String action;
@@ -15,10 +11,10 @@ public class AuditLog {
     private String ip;
     private String result;
     private String message;
-    @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getAction() { return action; }
@@ -34,6 +30,7 @@ public class AuditLog {
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
 
 

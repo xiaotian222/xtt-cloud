@@ -1,6 +1,6 @@
 package xtt.cloud.oa.platform.interfaces.rest.external;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.platform.application.PermissionService;
@@ -19,11 +19,16 @@ import java.util.Set;
  */
 @RestController
 @RequestMapping("/api/platform/external/permissions")
-@RequiredArgsConstructor
 public class ExternalPermissionController {
 
-    private final PermissionService permissionService;
-    private final PermissionMapper permissionMapper;
+    private PermissionService permissionService;
+    private PermissionMapper permissionMapper;
+
+    @Autowired
+    public ExternalPermissionController(PermissionService permissionService, PermissionMapper permissionMapper) {
+        this.permissionService = permissionService;
+        this.permissionMapper = permissionMapper;
+    }
 
     /**
      * 根据权限代码获取权限信息

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.platform.domain.mapper.AuditLogMapper">
+
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.platform.infrastructure.audit.AuditLog">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="action" property="action" jdbcType="VARCHAR"/>
+        <result column="resource" property="resource" jdbcType="VARCHAR"/>
+        <result column="method" property="method" jdbcType="VARCHAR"/>
+        <result column="ip" property="ip" jdbcType="VARCHAR"/>
+        <result column="result" property="result" jdbcType="VARCHAR"/>
+        <result column="message" property="message" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, action, resource, method, ip, result, message, created_at
+    </sql>
+
+    <insert id="insert" parameterType="xtt.cloud.oa.platform.infrastructure.audit.AuditLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_audit_log (username, action, resource, method, ip, result, message, created_at)
+        VALUES (#{username}, #{action}, #{resource}, #{method}, #{ip}, #{result}, #{message}, #{createdAt})
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_audit_log
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_audit_log
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByUsername" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_audit_log
+        WHERE username = #{username}
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>

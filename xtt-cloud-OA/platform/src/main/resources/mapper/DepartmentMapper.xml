@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.platform.domain.mapper.DepartmentMapper">
+
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.platform.domain.entity.Department">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="parent_id" property="parentId" jdbcType="BIGINT"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="sort_no" property="sortNo" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, parent_id, name, sort_no, created_at, updated_at
+    </sql>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_dept
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByParentId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_dept
+        WHERE parent_id = #{parentId}
+        ORDER BY sort_no ASC, created_at ASC
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_dept
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY sort_no ASC, created_at ASC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_dept
+        ORDER BY sort_no ASC, created_at ASC
+    </select>
+
+    <insert id="insert" parameterType="xtt.cloud.oa.platform.domain.entity.Department" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_dept (parent_id, name, sort_no, created_at, updated_at)
+        VALUES (#{parentId}, #{name}, #{sortNo}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="xtt.cloud.oa.platform.domain.entity.Department">
+        UPDATE sys_dept
+        <set>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="sortNo != null">sort_no = #{sortNo},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_dept WHERE id = #{id}
+    </delete>
+
+</mapper>

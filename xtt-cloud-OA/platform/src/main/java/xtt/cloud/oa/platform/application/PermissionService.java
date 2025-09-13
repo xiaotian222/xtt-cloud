@@ -3,47 +3,67 @@ package xtt.cloud.oa.platform.application;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xtt.cloud.oa.platform.domain.entity.Permission;
-import xtt.cloud.oa.platform.domain.repository.PermissionRepository;
+import xtt.cloud.oa.platform.domain.mapper.PermissionMapper;
 import xtt.cloud.oa.platform.infrastructure.cache.PermissionCache;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 @Service
 public class PermissionService {
-    private final PermissionRepository permissionRepository;
+    private final PermissionMapper permissionMapper;
     private final PermissionCache permissionCache;
     
-    public PermissionService(PermissionRepository permissionRepository, PermissionCache permissionCache) { 
-        this.permissionRepository = permissionRepository;
+    public PermissionService(PermissionMapper permissionMapper, PermissionCache permissionCache) { 
+        this.permissionMapper = permissionMapper;
         this.permissionCache = permissionCache;
     }
 
-    public List<Permission> list() { return permissionRepository.findAll(); }
-    public Optional<Permission> get(Long id) { return permissionRepository.findById(id); }
+    public List<Permission> list() { 
+        return permissionMapper.selectAll(); 
+    }
+    
+    public Optional<Permission> get(Long id) { 
+        return permissionMapper.findById(id); 
+    }
 
     @Transactional
-    public Permission save(Permission permission) { return permissionRepository.save(permission); }
+    public Permission save(Permission permission) { 
+        if (permission.getId() == null) {
+            // 新增权限
+            permission.setCreatedAt(LocalDateTime.now());
+            permission.setUpdatedAt(LocalDateTime.now());
+            permissionMapper.insert(permission);
+        } else {
+            // 更新权限
+            permission.setUpdatedAt(LocalDateTime.now());
+            permissionMapper.update(permission);
+        }
+        return permission;
+    }
 
     @Transactional
-    public void delete(Long id) { permissionRepository.deleteById(id); }
+    public void delete(Long id) { 
+        permissionMapper.deleteById(id); 
+    }
 
     // 对外服务方法
     public Optional<Permission> findByCode(String code) {
-        return permissionRepository.findByCode(code);
+        return permissionMapper.findByCode(code);
     }
 
     public List<Permission> findByIds(List<Long> permissionIds) {
-        return permissionRepository.findAllById(permissionIds);
+        return permissionMapper.selectByIds(permissionIds);
     }
 
     public List<Permission> findByCodes(List<String> codes) {
-        return permissionRepository.findByCodeIn(codes);
+        return permissionMapper.selectByCodes(codes);
     }
 
     public List<Permission> findByType(String type) {
-        return permissionRepository.findByType(type);
+        return permissionMapper.selectByType(type);
     }
 
     public boolean userHasPermission(String username, String permissionCode) {
