@@ -56,7 +56,7 @@
         SELECT
         <include refid="Base_Column_List"/>
         FROM sys_user
-        ORDER BY created_at DESC
+        ORDER BY created_at
     </select>
 
     <insert id="insert" parameterType="xtt.cloud.oa.platform.domain.entity.User" useGeneratedKeys="true" keyProperty="id">

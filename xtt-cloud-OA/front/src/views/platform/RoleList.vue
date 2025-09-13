@@ -44,12 +44,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { listRoles, createRole, updateRole, deleteRole, listPerms, grantRolePerms } from '@/api/platform'
 
 const list = ref([])
 const query = ref({ keyword: '' })
 const visible = ref(false)
+const loading = ref(false)
 const form = ref({ id: null, code: '', name: '', description: '' })
 const grantVisible = ref(false)
 const grantPermIds = ref([])
@@ -59,19 +60,66 @@ const openEdit = (row) => {
   form.value = row ? { ...row } : { id: null, code: '', name: '', description: '' }
   visible.value = true
 }
-const fetch = async () => { list.value = (await listRoles()).data || [] }
-const save = async () => {
-  const payload = { ...form.value }
-  if (payload.id) await updateRole(payload.id, payload)
-  else await createRole(payload)
-  ElMessage.success('保存成功'); visible.value=false; fetch()
+const fetch = async () => {
+  try {
+    console.log('开始获取角色列表...')
+    const response = await listRoles()
+    console.log('角色列表响应:', response)
+    
+    // 直接使用响应数据，因为后端直接返回List<Role>
+    list.value = Array.isArray(response) ? response : (response.data || [])
+    console.log('角色列表数据:', list.value)
+  } catch (error) {
+    console.error('获取角色列表失败:', error)
+    ElMessage.error('获取角色列表失败: ' + (error.message || '未知错误'))
+  }
 }
-const remove = async (row) => { await deleteRole(row.id); ElMessage.success('删除成功'); fetch() }
-onMounted(fetch)
+
+const save = async () => {
+  try {
+    const payload = { ...form.value }
+    if (payload.id) {
+      await updateRole(payload.id, payload)
+    } else {
+      await createRole(payload)
+    }
+    ElMessage.success('保存成功')
+    visible.value = false
+    fetch()
+  } catch (error) {
+    console.error('保存角色失败:', error)
+    ElMessage.error('保存角色失败')
+  }
+}
+
+const remove = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该角色吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteRole(row.id)
+    ElMessage.success('删除成功')
+    fetch()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除角色失败:', error)
+      ElMessage.error('删除角色失败')
+    }
+  }
+}
+onMounted(() => {
+  console.log('🚀 RoleList组件已挂载，开始获取数据...')
+  console.log('📊 当前角色列表:', list.value)
+  console.log('🔧 组件状态:', { loading: loading.value, list: list.value })
+  fetch()
+})
 
 const openGrant = async (row) => {
   form.value = { ...row }
-  permOptions.value = (await listPerms()).data || []
+  const permsResponse = await listPerms()
+  permOptions.value = Array.isArray(permsResponse) ? permsResponse : (permsResponse.data || [])
   grantPermIds.value = (row.permissions || []).map(p => p.id)
   grantVisible.value = true
 }

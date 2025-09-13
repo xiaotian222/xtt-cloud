@@ -9,7 +9,7 @@ import xtt.cloud.oa.common.dto.PermissionInfoDto;
  * @author xtt
  * @since 2023.0.3.3
  */
-@Component
+@Component("commonPermissionMapper")
 public class PermissionMapper {
 
     public PermissionInfoDto toPermissionInfoDto(Object permission) {

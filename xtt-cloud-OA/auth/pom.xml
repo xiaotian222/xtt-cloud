@@ -22,12 +22,6 @@
     </properties>
 
     <dependencies>
-        <!-- OpenFeign for calling platform service -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
-            <version>4.1.3</version>
-        </dependency>
         <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -106,7 +100,25 @@
             <scope>test</scope>
         </dependency>
         <!-- openfeign core 由 starter 传递引入，无需单独声明版本 -->
+        <!-- OpenFeign for calling platform service -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <version>3.1.9</version>
+        </dependency>
 
+        <!-- Circuit Breaker for Feign Client -->
+        <!--        <dependency>-->
+        <!--            <groupId>org.springframework.cloud</groupId>-->
+        <!--            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>-->
+        <!--        </dependency>-->
+
+        <!-- LoadBalancer for Feign Client -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+            <version>3.1.8</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -1,150 +1,140 @@
-# 前端配置管理说明
+# 前端配置管理
 
-## 📋 配置文件结构
+## 概述
+
+前端项目采用分层配置管理，支持环境变量和配置文件两种方式。
+
+## 配置文件结构
 
 ```
 src/config/
-├── api.config.js      # API接口配置
-├── env.config.js      # 环境配置
-└── README.md          # 配置说明
+├── env.config.js      # 环境配置管理
+├── api.config.js      # API配置管理
+└── README.md         # 配置说明文档
 ```
 
-## 🔧 配置文件说明
+## 配置方式
 
-### 1. api.config.js - API接口配置
-管理所有的后端服务接口地址和配置信息：
+### 1. 环境变量配置（推荐）
 
-```javascript
-export const API_CONFIG = {
-  // 基础配置
-  BASE_URL: 'http://localhost:8020',
-  GATEWAY_URL: 'http://localhost:8080',
-  
-  // 认证服务
-  AUTH_SERVICE: {
-    BASE_URL: 'http://localhost:8020',
-    LOGIN: '/auth/login',
-    LOGOUT: '/auth/logout',
-    // ... 其他接口
-  },
-  
-  // 中间件服务
-  MIDDLEWARE: {
-    NACOS: 'http://localhost:8848',
-    MYSQL: 'localhost:3306',
-    // ... 其他服务
-  }
-}
+在项目根目录创建环境变量文件：
+
+#### 开发环境 (.env.development)
+```bash
+# 网关地址
+VITE_GATEWAY_URL=http://localhost:30010
+
+# API基础地址
+VITE_API_BASE_URL=http://localhost:30010
+
+# 日志级别
+VITE_LOG_LEVEL=debug
+
+# 是否启用Mock
+VITE_ENABLE_MOCK=true
+
+# 请求超时时间（毫秒）
+VITE_TIMEOUT=10000
+
+# 中间件服务地址
+VITE_NACOS_URL=http://localhost:8848
+VITE_MYSQL_URL=localhost:3306
+VITE_SEATA_URL=localhost:8091
+VITE_ROCKETMQ_URL=localhost:9876
 ```
 
-### 2. env.config.js - 环境配置
-管理不同环境（开发、测试、生产）的配置：
+#### 生产环境 (.env.production)
+```bash
+# 生产环境网关地址
+VITE_GATEWAY_URL=https://api.yourdomain.com
 
-```javascript
-export const ENV_CONFIG = {
-  development: {
-    API_BASE_URL: 'http://localhost:8020',
-    GATEWAY_URL: 'http://localhost:8080',
-    // ... 开发环境配置
-  },
-  production: {
-    API_BASE_URL: 'https://api.yourdomain.com',
-    GATEWAY_URL: 'https://gateway.yourdomain.com',
-    // ... 生产环境配置
-  }
-}
+# 生产环境API基础地址
+VITE_API_BASE_URL=https://api.yourdomain.com
+
+# 生产环境日志级别
+VITE_LOG_LEVEL=error
+
+# 生产环境不启用Mock
+VITE_ENABLE_MOCK=false
+
+# 生产环境超时时间
+VITE_TIMEOUT=30000
 ```
 
-## 🚀 使用方法
+### 2. 配置文件方式
 
-### 1. 在组件中使用
+直接修改 `src/config/env.config.js` 文件中的默认值。
+
+## 配置优先级
+
+1. 环境变量（.env文件）
+2. 配置文件默认值
+
+## 使用示例
+
+### 在组件中使用配置
+
 ```javascript
-import { API_CONFIG } from '@/config/api.config'
-import { getApiBaseUrl } from '@/config/env.config'
+import { API_CONFIG, getGatewayUrl, getApiBaseUrl } from '@/config/api.config.js'
 
-// 使用API配置
-const loginUrl = API_CONFIG.AUTH_SERVICE.LOGIN
+// 获取网关地址
+const gatewayUrl = getGatewayUrl()
 
-// 使用环境配置
-const baseUrl = getApiBaseUrl()
+// 获取API基础地址
+const apiBaseUrl = getApiBaseUrl()
+
+// 使用配置
+console.log('Gateway URL:', API_CONFIG.GATEWAY_URL)
+console.log('API Base URL:', API_CONFIG.BASE_URL)
 ```
 
-### 2. 在Vite配置中使用
+### 在vite.config.js中使用配置
+
 ```javascript
-import { getApiBaseUrl } from './src/config/env.config.js'
+import { getGatewayUrl } from './src/config/env.config.js'
 
 export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: getApiBaseUrl(), // 动态获取API地址
-        // ... 其他配置
+        target: getGatewayUrl(), // 从配置文件读取网关地址
+        changeOrigin: true
       }
     }
   }
 })
 ```
 
-## 🔄 修改配置
+## 配置项说明
 
-### 1. 修改开发环境地址
-编辑 `src/config/env.config.js` 文件中的 `development` 部分：
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|----------|--------|------|
+| 网关地址 | VITE_GATEWAY_URL | http://localhost:30010 | 后端网关服务地址 |
+| API基础地址 | VITE_API_BASE_URL | http://localhost:30010 | API请求基础地址 |
+| 日志级别 | VITE_LOG_LEVEL | debug | 控制台日志级别 |
+| 启用Mock | VITE_ENABLE_MOCK | true | 是否启用Mock数据 |
+| 请求超时 | VITE_TIMEOUT | 10000 | 请求超时时间（毫秒） |
+| Nacos地址 | VITE_NACOS_URL | http://localhost:8848 | Nacos服务地址 |
+| MySQL地址 | VITE_MYSQL_URL | localhost:3306 | MySQL服务地址 |
+| Seata地址 | VITE_SEATA_URL | localhost:8091 | Seata服务地址 |
+| RocketMQ地址 | VITE_ROCKETMQ_URL | localhost:9876 | RocketMQ服务地址 |
+
+## 注意事项
+
+1. 环境变量必须以 `VITE_` 开头才能在Vite中使用
+2. 修改环境变量后需要重启开发服务器
+3. 生产环境配置会覆盖开发环境配置
+4. 敏感信息不要放在环境变量中，应该通过后端接口获取
+
+## 调试配置
+
+在开发环境中，可以通过以下方式查看当前配置：
 
 ```javascript
-development: {
-  API_BASE_URL: 'http://localhost:8020',  // 修改为你的地址
-  GATEWAY_URL: 'http://localhost:8080',   // 修改为你的地址
-  // ... 其他配置
-}
+import { printConfig } from '@/config/env.config.js'
+
+// 打印当前配置
+printConfig()
 ```
 
-### 2. 添加新的服务配置
-在 `src/config/api.config.js` 中添加新的服务：
-
-```javascript
-export const API_CONFIG = {
-  // ... 现有配置
-  
-  // 新增服务
-  NEW_SERVICE: {
-    BASE_URL: 'http://localhost:8081',
-    ENDPOINT1: '/api/endpoint1',
-    ENDPOINT2: '/api/endpoint2'
-  }
-}
-```
-
-## 📱 环境切换
-
-### 1. 开发环境
-```bash
-npm run dev
-# 使用 development 配置
-```
-
-### 2. 生产环境
-```bash
-npm run build
-# 使用 production 配置
-```
-
-### 3. 测试环境
-```bash
-npm run build --mode test
-# 使用 test 配置
-```
-
-## 🎯 优势
-
-- ✅ **集中管理**: 所有配置集中在一个地方
-- ✅ **环境隔离**: 不同环境使用不同配置
-- ✅ **易于维护**: 修改配置只需改一个文件
-- ✅ **类型安全**: 支持TypeScript类型检查
-- ✅ **动态配置**: 支持运行时动态获取配置
-
-## 🔍 注意事项
-
-1. **修改配置后需要重启服务**: 特别是Vite配置相关的修改
-2. **环境变量优先级**: 环境变量会覆盖配置文件
-3. **生产环境安全**: 生产环境的敏感信息不要硬编码
-4. **版本控制**: 配置文件应该纳入版本控制
+这将在控制台输出当前的所有配置信息。

@@ -33,17 +33,74 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { listPerms, createPerm, updatePerm, deletePerm } from '@/api/platform'
 const list = ref([])
 const query = ref({ keyword: '' })
 const visible = ref(false)
 const form = ref({ id: null, code: '', name: '', type: 'api' })
-const openEdit = (row)=>{ form.value = row? { ...row } : { id:null, code:'', name:'', type:'api' }; visible.value = true }
-const fetch = async () => { list.value = (await listPerms()).data || [] }
-const save = async ()=>{ const p={...form.value}; if(p.id) await updatePerm(p.id,p); else await createPerm(p); ElMessage.success('保存成功'); visible.value=false; fetch() }
-const remove = async (row)=>{ await deletePerm(row.id); ElMessage.success('删除成功'); fetch() }
-onMounted(fetch)
+const loading = ref(false)
+const openEdit = (row) => {
+  form.value = row ? { ...row } : { id: null, code: '', name: '', type: 'api' }
+  visible.value = true
+}
+
+const fetch = async () => {
+  try {
+    loading.value = true
+    console.log('获取权限列表...')
+    const response = await listPerms()
+    console.log('权限列表响应:', response)
+    list.value = Array.isArray(response) ? response : (response.data || [])
+    console.log('权限列表数据:', list.value)
+  } catch (error) {
+    console.error('获取权限列表失败:', error)
+    ElMessage.error('获取权限列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const save = async () => {
+  try {
+    const payload = { ...form.value }
+    if (payload.id) {
+      await updatePerm(payload.id, payload)
+    } else {
+      await createPerm(payload)
+    }
+    ElMessage.success('保存成功')
+    visible.value = false
+    fetch()
+  } catch (error) {
+    console.error('保存权限失败:', error)
+    ElMessage.error('保存权限失败')
+  }
+}
+
+const remove = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该权限吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deletePerm(row.id)
+    ElMessage.success('删除成功')
+    fetch()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除权限失败:', error)
+      ElMessage.error('删除权限失败')
+    }
+  }
+}
+onMounted(() => {
+  console.log('🚀 PermList组件已挂载，开始获取数据...')
+  console.log('📊 当前权限列表:', list.value)
+  console.log('🔧 组件状态:', { loading: loading.value, list: list.value })
+  fetch()
+})
 </script>
 
 <style scoped>

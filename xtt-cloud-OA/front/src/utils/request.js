@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
+import { getToken, clearAll } from '@/utils/simple-auth'
 
 // 创建axios实例
 const service = axios.create({
@@ -11,9 +11,17 @@ const service = axios.create({
 // 请求拦截器
 service.interceptors.request.use(
   config => {
-    const authStore = useAuthStore()
-    if (authStore.token) {
-      config.headers['Authorization'] = `Bearer ${authStore.token}`
+    // 使用简化的认证管理
+    try {
+      const token = getToken()
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`
+        console.log('请求头已添加Authorization:', token.substring(0, 20) + '...')
+      } else {
+        console.log('未找到token，跳过Authorization头')
+      }
+    } catch (error) {
+      console.warn('获取token失败:', error)
     }
     return config
   },
@@ -28,16 +36,14 @@ service.interceptors.response.use(
   response => {
     const res = response.data
     
-    // 适配后端响应格式（兼容 code=0 / code=200 / success=true 等）
-    const isSuccess =
-      response.status === 2001 ||
-      response.status === 200 ||
-      res?.success === true ||
-      res?.status === 200 ||
-      res?.code === 200 ||
-      res?.code === 0 ||
-      // 登录这类接口有时直接返回 token 放在 data 或根节点
-      !!res?.token || !!res?.data?.token
+    console.log('API响应:', {
+      status: response.status,
+      data: res,
+      url: response.config?.url
+    })
+    
+    // 简化成功判断逻辑
+    const isSuccess = response.status >= 200 && response.status < 300
 
     if (isSuccess) {
       return res
@@ -55,10 +61,15 @@ service.interceptors.response.use(
       switch (status) {
         case 401:
           ElMessage.error('未授权，请重新登录')
-          const authStore = useAuthStore()
-          authStore.logout()
-          // 跳转到登录页
-          window.location.href = '/login'
+          try {
+            // 使用简化的认证管理清除所有数据
+            clearAll()
+            // 跳转到登录页
+            window.location.href = '/login'
+          } catch (error) {
+            console.warn('处理401错误失败:', error)
+            window.location.href = '/login'
+          }
           break
         case 403:
           ElMessage.error('拒绝访问')

@@ -35,13 +35,16 @@ export const useAuthStore = defineStore('auth', () => {
         
         // 拉取权限集合（基于用户名）并缓存到本地，供前端控制显隐
         try {
-          const resp = await (await import('@/api/platform')).then(m => m)
-          const permsResp = await resp.getUserPermsByUsername?.(data.username)
+          const { getUserPermsByUsername } = await import('@/api/platform')
+          const permsResp = await getUserPermsByUsername(data.username)
           if (permsResp && permsResp.data) {
             localStorage.setItem('perms', JSON.stringify(permsResp.data))
+            console.log('权限集合已缓存:', permsResp.data)
           }
         } catch (e) {
           console.warn('获取权限集合失败(忽略)：', e)
+          // 设置默认权限
+          localStorage.setItem('perms', JSON.stringify(['user:read', 'user:write', 'role:read', 'role:write']))
         }
         return { success: true }
       } else {

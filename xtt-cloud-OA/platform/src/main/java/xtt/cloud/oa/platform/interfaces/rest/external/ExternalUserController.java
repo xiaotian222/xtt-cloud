@@ -1,9 +1,11 @@
 package xtt.cloud.oa.platform.interfaces.rest.external;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.platform.application.UserService;
+import xtt.cloud.oa.platform.application.PermissionService;
 import xtt.cloud.oa.common.dto.UserInfoDto;
 import xtt.cloud.oa.platform.interfaces.mapper.UserMapper;
 
@@ -23,11 +25,15 @@ import java.util.Set;
 public class ExternalUserController {
 
     private UserService userService;
+    private PermissionService permissionService;
     private UserMapper userMapper;
 
     @Autowired
-    public ExternalUserController(UserService userService, UserMapper userMapper) {
+    public ExternalUserController(UserService userService, 
+                                 PermissionService permissionService,
+                                 @Qualifier("userDtoMapper") UserMapper userMapper) {
         this.userService = userService;
+        this.permissionService = permissionService;
         this.userMapper = userMapper;
     }
 
@@ -42,7 +48,7 @@ public class ExternalUserController {
                     // 加载用户角色
                     dto.setRoles(userMapper.toRoleInfoDtos(userService.getUserRoles(user.getId())));
                     // 加载用户权限
-                    dto.setPermissions(userService.getUserPermissions(user.getId()));
+                    dto.setPermissions(permissionService.getUserPermissions(user.getId()));
                     // 加载用户部门
                     dto.setDepartments(userMapper.toDeptInfoDtos(userService.getUserDepartments(user.getId())));
                     return dto;
@@ -62,7 +68,7 @@ public class ExternalUserController {
                     // 加载用户角色
                     dto.setRoles(userMapper.toRoleInfoDtos(userService.getUserRoles(user.getId())));
                     // 加载用户权限
-                    dto.setPermissions(userService.getUserPermissions(user.getId()));
+                    dto.setPermissions(permissionService.getUserPermissions(user.getId()));
                     // 加载用户部门
                     dto.setDepartments(userMapper.toDeptInfoDtos(userService.getUserDepartments(user.getId())));
                     return dto;
@@ -76,7 +82,7 @@ public class ExternalUserController {
      */
     @GetMapping("/username/{username}/permissions")
     public ResponseEntity<Set<String>> getUserPermissionsByUsername(@PathVariable String username) {
-        Set<String> permissions = userService.getUserPermissionsByUsername(username);
+        Set<String> permissions = permissionService.getUserPermissionsByUsername(username);
         return ResponseEntity.ok(permissions);
     }
 
@@ -85,7 +91,7 @@ public class ExternalUserController {
      */
     @GetMapping("/{id}/permissions")
     public ResponseEntity<Set<String>> getUserPermissions(@PathVariable Long id) {
-        Set<String> permissions = userService.getUserPermissions(id);
+        Set<String> permissions = permissionService.getUserPermissions(id);
         return ResponseEntity.ok(permissions);
     }
 
@@ -110,6 +116,28 @@ public class ExternalUserController {
                 .map(role -> role.getCode())
                 .collect(java.util.stream.Collectors.toSet());
         return ResponseEntity.ok(roleCodes);
+    }
+
+    /**
+     * 根据用户名获取用户部门列表
+     */
+    @GetMapping("/username/{username}/departments")
+    public ResponseEntity<Set<xtt.cloud.oa.common.dto.DeptInfoDto>> getUserDepartmentsByUsername(@PathVariable String username) {
+        return userService.findByUsername(username)
+                .map(user -> userService.getUserDepartments(user.getId()))
+                .map(departments -> userMapper.toDeptInfoDtos(departments))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * 根据用户ID获取用户部门列表
+     */
+    @GetMapping("/{id}/departments")
+    public ResponseEntity<Set<xtt.cloud.oa.common.dto.DeptInfoDto>> getUserDepartments(@PathVariable Long id) {
+        Set<xtt.cloud.oa.platform.domain.entity.Department> departments = userService.getUserDepartments(id);
+        Set<xtt.cloud.oa.common.dto.DeptInfoDto> deptDtos = userMapper.toDeptInfoDtos(departments);
+        return ResponseEntity.ok(deptDtos);
     }
 
     /**
@@ -140,7 +168,7 @@ public class ExternalUserController {
                 .map(user -> {
                     UserInfoDto dto = userMapper.toUserInfoDto(user);
                     dto.setRoles(userMapper.toRoleInfoDtos(userService.getUserRoles(user.getId())));
-                    dto.setPermissions(userService.getUserPermissions(user.getId()));
+                    dto.setPermissions(permissionService.getUserPermissions(user.getId()));
                     dto.setDepartments(userMapper.toDeptInfoDtos(userService.getUserDepartments(user.getId())));
                     return dto;
                 })
@@ -157,7 +185,7 @@ public class ExternalUserController {
                 .map(user -> {
                     UserInfoDto dto = userMapper.toUserInfoDto(user);
                     dto.setRoles(userMapper.toRoleInfoDtos(userService.getUserRoles(user.getId())));
-                    dto.setPermissions(userService.getUserPermissions(user.getId()));
+                    dto.setPermissions(permissionService.getUserPermissions(user.getId()));
                     dto.setDepartments(userMapper.toDeptInfoDtos(userService.getUserDepartments(user.getId())));
                     return dto;
                 })

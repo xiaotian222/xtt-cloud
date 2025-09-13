@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * @author xtt
  * @since 2023.0.3.3
  */
-@Component
+@Component("roleDtoMapper")
 public class RoleMapper {
 
     public RoleInfoDto toRoleInfoDto(Role role) {

@@ -3,6 +3,7 @@ package xtt.cloud.oa.platform.interfaces.rest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.platform.application.UserService;
+import xtt.cloud.oa.platform.application.PermissionService;
 import xtt.cloud.oa.platform.domain.entity.User;
 
 import java.util.List;
@@ -11,7 +12,12 @@ import java.util.List;
 @RequestMapping("/api/platform/users")
 public class UserController {
     private final UserService userService;
-    public UserController(UserService userService) { this.userService = userService; }
+    private final PermissionService permissionService;
+    
+    public UserController(UserService userService, PermissionService permissionService) { 
+        this.userService = userService; 
+        this.permissionService = permissionService;
+    }
 
     @GetMapping
     public List<User> list() { return userService.list(); }
@@ -38,14 +44,19 @@ public class UserController {
         return userService.grantRoles(userId, roleIds);
     }
 
+    @PostMapping("/{id}/departments")
+    public User grantDepartments(@PathVariable("id") Long userId, @RequestBody java.util.List<Long> departmentIds) {
+        return userService.grantDepartments(userId, departmentIds);
+    }
+
     @GetMapping("/{id}/permissions")
     public java.util.Set<String> getUserPerms(@PathVariable("id") Long userId) {
-        return userService.getUserPermissions(userId);
+        return permissionService.getUserPermissions(userId);
     }
 
     @GetMapping("/permissions")
     public java.util.Set<String> getUserPermsByUsername(@RequestParam("username") String username) {
-        return userService.getUserPermissionsByUsername(username);
+        return permissionService.getUserPermissionsByUsername(username);
     }
 }
 

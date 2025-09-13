@@ -51,12 +51,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { listUsers, createUser, updateUser, deleteUser, listRoles, grantUserRoles } from '@/api/platform'
 
 const list = ref([])
 const query = ref({ keyword: '' })
 const visible = ref(false)
+const loading = ref(false)
 const form = ref({ id: null, username: '', password: '', nickname: '', email: '', status: 1 })
 const grantVisible = ref(false)
 const grantRoleIds = ref([])
@@ -67,31 +68,67 @@ const openEdit = (row) => {
   visible.value = true
 }
 
-const fetch = async () => { list.value = (await listUsers()).data || [] }
+const fetch = async () => {
+  try {
+    console.log('开始获取用户列表...')
+    const response = await listUsers()
+    console.log('用户列表响应:', response)
+    
+    // 直接使用响应数据，因为后端直接返回List<User>
+    list.value = Array.isArray(response) ? response : (response.data || [])
+    console.log('用户列表数据:', list.value)
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    ElMessage.error('获取用户列表失败: ' + (error.message || '未知错误'))
+  }
+}
 
 const save = async () => {
-  const payload = { ...form.value }
-  if (payload.id) {
-    await updateUser(payload.id, payload)
-  } else {
-    await createUser(payload)
+  try {
+    const payload = { ...form.value }
+    if (payload.id) {
+      await updateUser(payload.id, payload)
+    } else {
+      await createUser(payload)
+    }
+    ElMessage.success('保存成功')
+    visible.value = false
+    fetch()
+  } catch (error) {
+    console.error('保存用户失败:', error)
+    ElMessage.error('保存用户失败')
   }
-  ElMessage.success('保存成功')
-  visible.value = false
-  fetch()
 }
 
 const remove = async (row) => {
-  await deleteUser(row.id)
-  ElMessage.success('删除成功')
-  fetch()
+  try {
+    await ElMessageBox.confirm('确定要删除该用户吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteUser(row.id)
+    ElMessage.success('删除成功')
+    fetch()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除用户失败:', error)
+      ElMessage.error('删除用户失败')
+    }
+  }
 }
 
-onMounted(fetch)
+onMounted(() => {
+  console.log('🚀 UserList组件已挂载，开始获取数据...')
+  console.log('📊 当前用户列表:', list.value)
+  console.log('🔧 组件状态:', { loading: loading.value, list: list.value })
+  fetch()
+})
 
 const openGrant = async (row) => {
   form.value = { ...row }
-  roleOptions.value = (await listRoles()).data || []
+  const rolesResponse = await listRoles()
+  roleOptions.value = Array.isArray(rolesResponse) ? rolesResponse : (rolesResponse.data || [])
   grantRoleIds.value = (row.roles || []).map(r => r.id)
   grantVisible.value = true
 }

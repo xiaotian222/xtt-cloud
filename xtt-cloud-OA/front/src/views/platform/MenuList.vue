@@ -32,14 +32,77 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listMenus, createMenu, updateMenu, deleteMenu } from '@/api/platform'
+
 const list = ref([])
 const visible = ref(false)
-const form = ref({ id:null, name:'', path:'', type:'menu', permission:'' })
-const openEdit=(row)=>{ form.value=row?{...row}:{ id:null, name:'', path:'', type:'menu', permission:'' }; visible.value=true }
-const save=()=>{ ElMessage.success('已保存(演示)'); visible.value=false }
-const remove=()=>{ ElMessage.success('已删除(演示)') }
+const form = ref({ id: null, name: '', path: '', type: 'menu', permission: '', parentId: null, sortNo: 0 })
+const loading = ref(false)
+
+const openEdit = (row) => {
+  form.value = row ? { ...row } : { id: null, name: '', path: '', type: 'menu', permission: '', parentId: null, sortNo: 0 }
+  visible.value = true
+}
+
+const fetch = async () => {
+  try {
+    loading.value = true
+    console.log('获取菜单列表...')
+    const response = await listMenus()
+    console.log('菜单列表响应:', response)
+    list.value = Array.isArray(response) ? response : (response.data || [])
+    console.log('菜单列表数据:', list.value)
+  } catch (error) {
+    console.error('获取菜单列表失败:', error)
+    ElMessage.error('获取菜单列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const save = async () => {
+  try {
+    const payload = { ...form.value }
+    if (payload.id) {
+      await updateMenu(payload.id, payload)
+    } else {
+      await createMenu(payload)
+    }
+    ElMessage.success('保存成功')
+    visible.value = false
+    fetch()
+  } catch (error) {
+    console.error('保存菜单失败:', error)
+    ElMessage.error('保存菜单失败')
+  }
+}
+
+const remove = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该菜单吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteMenu(row.id)
+    ElMessage.success('删除成功')
+    fetch()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除菜单失败:', error)
+      ElMessage.error('删除菜单失败')
+    }
+  }
+}
+
+onMounted(() => {
+  console.log('🚀 MenuList组件已挂载，开始获取数据...')
+  console.log('📊 当前菜单列表:', list.value)
+  console.log('🔧 组件状态:', { loading: loading.value, list: list.value })
+  fetch()
+})
 </script>
 
 <style scoped>

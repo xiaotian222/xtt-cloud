@@ -6,47 +6,32 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
-import xtt.cloud.oa.platform.application.UserService;
-import xtt.cloud.oa.platform.domain.entity.Role;
+import xtt.cloud.oa.platform.application.PermissionDomainService;
 import xtt.cloud.oa.platform.domain.entity.User;
 
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Component
 public class PermissionCache {
     private static final Logger logger = LoggerFactory.getLogger(PermissionCache.class);
     public static final String USER_PERMS_CACHE = "userPerms";
     
-    private final UserService userService;
+    private final PermissionDomainService permissionDomainService;
     
     @Autowired
-    public PermissionCache(UserService userService) {
-        this.userService = userService;
+    public PermissionCache(PermissionDomainService permissionDomainService) {
+        this.permissionDomainService = permissionDomainService;
     }
 
     @Cacheable(cacheNames = USER_PERMS_CACHE, key = "#user.id")
     public Set<String> loadUserPermissions(User user) {
-        if (user.getRoles() == null) return java.util.Set.of();
-        return user.getRoles().stream()
-                .flatMap(r -> r.getPermissions().stream())
-                .map(p -> p.getCode())
-                .collect(Collectors.toSet());
+        if (user.getId() == null) return java.util.Set.of();
+        return permissionDomainService.calculateUserPermissions(user.getId());
     }
 
     @CacheEvict(cacheNames = USER_PERMS_CACHE, key = "#userId")
     public void evictUserPerms(Long userId) {
         logger.info("Evicting permission cache for user ID: {}", userId);
-        
-        // 同时清理按用户名缓存的权限
-        try {
-            userService.get(userId).ifPresent(user -> {
-                evictUserPermsByUsername(user.getUsername());
-            });
-        } catch (Exception e) {
-            logger.warn("Failed to evict permission cache by username for user ID: {}, error: {}", 
-                       userId, e.getMessage());
-        }
     }
 
     @CacheEvict(cacheNames = USER_PERMS_CACHE, allEntries = true)
@@ -69,16 +54,12 @@ public class PermissionCache {
 
     @Cacheable(cacheNames = USER_PERMS_CACHE, key = "#username")
     public Set<String> loadUserPermissions(String username) {
-        return userService.findByUsername(username)
-                .map(user -> {
-                    // 获取用户的角色和权限
-                    Set<Role> roles = userService.getUserRoles(user.getId());
-                    return roles.stream()
-                            .flatMap(role -> role.getPermissions().stream())
-                            .map(permission -> permission.getCode())
-                            .collect(Collectors.toSet());
-                })
-                .orElse(java.util.Set.of());
+        return permissionDomainService.calculateUserPermissionsByUsername(username);
+    }
+
+    @Cacheable(cacheNames = USER_PERMS_CACHE, key = "#userId")
+    public Set<String> loadUserPermissions(Long userId) {
+        return permissionDomainService.calculateUserPermissions(userId);
     }
 }
 

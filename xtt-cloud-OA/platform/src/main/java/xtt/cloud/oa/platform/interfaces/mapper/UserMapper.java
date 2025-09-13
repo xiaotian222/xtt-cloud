@@ -1,5 +1,7 @@
 package xtt.cloud.oa.platform.interfaces.mapper;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import xtt.cloud.oa.common.dto.DeptInfoDto;
 import xtt.cloud.oa.common.dto.RoleInfoDto;
@@ -17,8 +19,15 @@ import java.util.stream.Collectors;
  * @author xtt
  * @since 2023.0.3.3
  */
-@Component
+@Component("userDtoMapper")
 public class UserMapper {
+    
+    private final RoleMapper roleMapper;
+    
+    @Autowired
+    public UserMapper(@Qualifier("roleDtoMapper") RoleMapper roleMapper) {
+        this.roleMapper = roleMapper;
+    }
 
     public UserInfoDto toUserInfoDto(User user) {
         if (user == null) {
@@ -35,6 +44,12 @@ public class UserMapper {
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
         
+        // 映射角色信息
+        dto.setRoles(toRoleInfoDtos(user.getRoles()));
+        
+        // 映射部门信息
+        dto.setDepartments(toDeptInfoDtos(user.getDepartments()));
+        
         return dto;
     }
 
@@ -44,24 +59,8 @@ public class UserMapper {
         }
         
         return roles.stream()
-                .map(this::toRoleInfoDto)
+                .map(roleMapper::toRoleInfoDto)
                 .collect(Collectors.toSet());
-    }
-
-    private RoleInfoDto toRoleInfoDto(Role role) {
-        if (role == null) {
-            return null;
-        }
-        
-        RoleInfoDto dto = new RoleInfoDto();
-        dto.setId(role.getId());
-        dto.setCode(role.getCode());
-        dto.setName(role.getName());
-        dto.setDescription(role.getDescription());
-        dto.setCreatedAt(role.getCreatedAt());
-        dto.setUpdatedAt(role.getUpdatedAt());
-        
-        return dto;
     }
 
     public Set<DeptInfoDto> toDeptInfoDtos(Set<Department> departments) {

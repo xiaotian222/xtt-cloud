@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * @author xtt
  * @since 2023.0.3.3
  */
-@FeignClient(name = "platform", configuration = xtt.cloud.oa.auth.config.FeignConfig.class)
+@FeignClient(name = "platform", configuration = xtt.cloud.oa.auth.config.FeignConfig.class, fallback = xtt.cloud.oa.auth.client.PlatformClientFallback.class)
 public interface PlatformClient {
 
     /**

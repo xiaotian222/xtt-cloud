@@ -1,79 +1,54 @@
-// 环境配置文件
+// 环境配置管理
 export const ENV_CONFIG = {
-  // 开发环境
-  development: {
-    API_BASE_URL: 'http://localhost:8020',
-    GATEWAY_URL: 'http://localhost:8080',
-    AUTH_SERVICE_URL: 'http://localhost:8020',
-    NACOS_URL: 'http://localhost:8848',
-    MYSQL_HOST: 'localhost',
-    MYSQL_PORT: '3306',
-    SEATA_HOST: 'localhost',
-    SEATA_PORT: '8091',
-    ROCKETMQ_HOST: 'localhost',
-    ROCKETMQ_PORT: '9876'
-  },
+  // 从环境变量读取配置，如果没有则使用默认值
+  GATEWAY_URL: import.meta.env.VITE_GATEWAY_URL || 'http://localhost:30010',
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:30010',
+  LOG_LEVEL: import.meta.env.VITE_LOG_LEVEL || 'debug',
+  ENABLE_MOCK: import.meta.env.VITE_ENABLE_MOCK === 'true' || true,
+  TIMEOUT: parseInt(import.meta.env.VITE_TIMEOUT) || 10000,
   
-  // 生产环境
-  production: {
-    API_BASE_URL: 'https://api.yourdomain.com',
-    GATEWAY_URL: 'https://gateway.yourdomain.com',
-    AUTH_SERVICE_URL: 'https://auth.yourdomain.com',
-    NACOS_URL: 'https://nacos.yourdomain.com',
-    MYSQL_HOST: 'mysql.yourdomain.com',
-    MYSQL_PORT: '3306',
-    SEATA_HOST: 'seata.yourdomain.com',
-    SEATA_PORT: '8091',
-    ROCKETMQ_HOST: 'rocketmq.yourdomain.com',
-    ROCKETMQ_PORT: '9876'
-  },
-  
-  // 测试环境
-  test: {
-    API_BASE_URL: 'http://test-api.yourdomain.com',
-    GATEWAY_URL: 'http://test-gateway.yourdomain.com',
-    AUTH_SERVICE_URL: 'http://test-auth.yourdomain.com',
-    NACOS_URL: 'http://test-nacos.yourdomain.com',
-    MYSQL_HOST: 'test-mysql.yourdomain.com',
-    MYSQL_PORT: '3306',
-    SEATA_HOST: 'test-seata.yourdomain.com',
-    SEATA_PORT: '8091',
-    ROCKETMQ_HOST: 'test-rocketmq.yourdomain.com',
-    ROCKETMQ_PORT: '9876'
+  // 中间件服务配置
+  MIDDLEWARE: {
+    NACOS: import.meta.env.VITE_NACOS_URL || 'http://localhost:8848',
+    MYSQL: import.meta.env.VITE_MYSQL_URL || 'localhost:3306',
+    SEATA: import.meta.env.VITE_SEATA_URL || 'localhost:8091',
+    ROCKETMQ: import.meta.env.VITE_ROCKETMQ_URL || 'localhost:9876'
   }
 }
 
-// 获取当前环境配置
-export const getCurrentEnvConfig = () => {
-  // 安全地获取环境变量
-  try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      const env = import.meta.env.MODE || 'development'
-      return ENV_CONFIG[env] || ENV_CONFIG.development
-    }
-  } catch (error) {
-    console.warn('无法获取环境变量，使用默认开发环境配置:', error)
-  }
-  return ENV_CONFIG.development
+// 环境检测
+export const isDevelopment = () => {
+  return import.meta.env.DEV
 }
 
-// 获取特定配置项
-export const getConfig = (key) => {
-  const config = getCurrentEnvConfig()
-  return config[key]
+export const isProduction = () => {
+  return import.meta.env.PROD
 }
 
-// 获取API基础URL
+// 获取当前环境的API地址
 export const getApiBaseUrl = () => {
-  return getConfig('API_BASE_URL')
+  return ENV_CONFIG.API_BASE_URL
 }
 
-// 获取网关URL
+// 获取网关地址
 export const getGatewayUrl = () => {
-  return getConfig('GATEWAY_URL')
+  return ENV_CONFIG.GATEWAY_URL
 }
 
-// 获取认证服务URL
-export const getAuthServiceUrl = () => {
-  return getConfig('AUTH_SERVICE_URL')
+// 获取完整的API地址
+export const getFullApiUrl = (endpoint) => {
+  return `${getApiBaseUrl()}${endpoint}`
+}
+
+// 打印配置信息
+export const printConfig = () => {
+  if (isDevelopment()) {
+    console.group('🔧 Environment Configuration')
+    console.log('🌐 Gateway URL:', ENV_CONFIG.GATEWAY_URL)
+    console.log('🔗 API Base URL:', ENV_CONFIG.API_BASE_URL)
+    console.log('📝 Log Level:', ENV_CONFIG.LOG_LEVEL)
+    console.log('🎭 Enable Mock:', ENV_CONFIG.ENABLE_MOCK)
+    console.log('⏱️ Timeout:', ENV_CONFIG.TIMEOUT)
+    console.groupEnd()
+  }
 }

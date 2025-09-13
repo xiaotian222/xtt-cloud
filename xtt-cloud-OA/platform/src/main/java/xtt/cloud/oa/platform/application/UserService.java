@@ -1,5 +1,7 @@
 package xtt.cloud.oa.platform.application;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +13,6 @@ import xtt.cloud.oa.platform.domain.mapper.RoleMapper;
 import xtt.cloud.oa.platform.domain.mapper.UserDepartmentMapper;
 import xtt.cloud.oa.platform.domain.mapper.UserMapper;
 import xtt.cloud.oa.platform.domain.mapper.UserRoleMapper;
-import xtt.cloud.oa.platform.infrastructure.cache.PermissionCache;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,32 +21,45 @@ import java.util.Set;
 
 @Service
 public class UserService {
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final DepartmentMapper departmentMapper;
     private final UserRoleMapper userRoleMapper;
     private final UserDepartmentMapper userDepartmentMapper;
-    private final PermissionCache permissionCache;
     private final PasswordEncoder passwordEncoder;
     
     public UserService(UserMapper userMapper, RoleMapper roleMapper, DepartmentMapper departmentMapper,
                       UserRoleMapper userRoleMapper, UserDepartmentMapper userDepartmentMapper,
-                      PermissionCache permissionCache, PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.departmentMapper = departmentMapper;
         this.userRoleMapper = userRoleMapper;
         this.userDepartmentMapper = userDepartmentMapper;
-        this.permissionCache = permissionCache;
         this.passwordEncoder = passwordEncoder;
     }
 
     public List<User> list() { 
-        return userMapper.selectAll(); 
+        List<User> users = userMapper.selectAll();
+        // 为每个用户加载角色和部门信息
+        for (User user : users) {
+            user.setRoles(getUserRoles(user.getId()));
+            user.setDepartments(getUserDepartments(user.getId()));
+        }
+        return users;
     }
     
     public Optional<User> get(Long id) { 
-        return userMapper.findById(id); 
+        Optional<User> userOpt = userMapper.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            // 加载用户的角色信息
+            user.setRoles(getUserRoles(id));
+            // 加载用户的部门信息
+            user.setDepartments(getUserDepartments(id));
+        }
+        return userOpt;
     }
 
     @Transactional
@@ -74,26 +88,28 @@ public class UserService {
         
         // 删除用户现有角色关联
         userRoleMapper.deleteUserRoles(userId);
-        
         // 添加新角色关联
         if (!roleIds.isEmpty()) {
             userRoleMapper.insertUserRoles(userId, roleIds);
         }
         
-        // 失效该用户的权限缓存
-        permissionCache.evictUserPerms(userId);
         return user;
     }
 
-    public Set<String> getUserPermissions(Long userId) {
+    @Transactional
+    public User grantDepartments(Long userId, List<Long> departmentIds) {
         User user = userMapper.findById(userId).orElseThrow();
-        return permissionCache.loadUserPermissions(user);
+        
+        // 删除用户现有部门关联
+        userDepartmentMapper.deleteUserDepartments(userId);
+        // 添加新部门关联
+        if (!departmentIds.isEmpty()) {
+            userDepartmentMapper.insertUserDepartments(userId, departmentIds);
+        }
+        
+        return user;
     }
 
-    public Set<String> getUserPermissionsByUsername(String username) {
-        User user = userMapper.findByUsername(username).orElseThrow();
-        return permissionCache.loadUserPermissions(user);
-    }
 
     // 对外服务方法
     public Optional<User> findByUsername(String username) {
@@ -129,8 +145,10 @@ public class UserService {
             if (user.getStatus() != null && user.getStatus() != 1) {
                 return false; // 用户被禁用
             }
+            log.info(" passwordEncoder : {}  ", passwordEncoder.encode(password));
             // 验证密码
             return passwordEncoder.matches(password, user.getPassword());
+
         }
         return false;
     }

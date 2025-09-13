@@ -1,6 +1,7 @@
 package xtt.cloud.oa.platform.interfaces.rest.external;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.platform.application.RoleService;
@@ -25,7 +26,8 @@ public class ExternalRoleController {
     private RoleMapper roleMapper;
 
     @Autowired
-    public ExternalRoleController(RoleService roleService, RoleMapper roleMapper) {
+    public ExternalRoleController(RoleService roleService, 
+                                 @Qualifier("roleDtoMapper") RoleMapper roleMapper) {
         this.roleService = roleService;
         this.roleMapper = roleMapper;
     }

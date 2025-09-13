@@ -1,7 +1,9 @@
 package xtt.cloud.oa.platform.domain.entity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class Department {
@@ -12,6 +14,7 @@ public class Department {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Set<User> users = new HashSet<>();
+    private List<Department> children = new ArrayList<>();
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -28,4 +31,6 @@ public class Department {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Set<User> getUsers() { return users; }
     public void setUsers(Set<User> users) { this.users = users; }
+    public List<Department> getChildren() { return children; }
+    public void setChildren(List<Department> children) { this.children = children; }
 }

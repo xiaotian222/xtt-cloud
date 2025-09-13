@@ -7,8 +7,6 @@ spring:
           uri: lb://platform
           predicates:
             - Path=/api/platform/**
-          filters:
-            - StripPrefix=1
         # OA Auth 服务路由（如有需要）
         - id: auth
           uri: lb://auth
@@ -16,7 +14,6 @@ spring:
             - Path=/api/auth/**
           filters:
             - StripPrefix=1
-
 # JWT Configuration
 jwt:
   secret: xtt-cloud-oa-jwt-secret-key-2023

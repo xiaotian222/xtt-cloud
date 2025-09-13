@@ -106,7 +106,31 @@ GET /api/platform/external/users/username/{username}/exists
 true
 ```
 
-#### 1.8 批量获取用户信息（根据ID列表）
+#### 1.8 根据用户名获取用户部门
+```http
+GET /api/platform/external/users/username/{username}/departments
+```
+
+**响应示例：**
+```json
+[
+  {
+    "id": 1,
+    "parentId": null,
+    "name": "总公司",
+    "sortNo": 0,
+    "createdAt": "2023-01-01T00:00:00",
+    "updatedAt": "2023-01-01T00:00:00"
+  }
+]
+```
+
+#### 1.9 根据用户ID获取用户部门
+```http
+GET /api/platform/external/users/{id}/departments
+```
+
+#### 1.10 批量获取用户信息（根据ID列表）
 ```http
 POST /api/platform/external/users/batch
 Content-Type: application/json
@@ -266,6 +290,86 @@ POST /api/platform/external/permissions/user/{username}/has-all
 Content-Type: application/json
 
 ["user:list", "user:create"]
+```
+
+### 4. 部门服务接口 (`/api/platform/external/departments`)
+
+#### 4.1 获取所有部门列表
+```http
+GET /api/platform/external/departments
+```
+
+**响应示例：**
+```json
+[
+  {
+    "id": 1,
+    "parentId": null,
+    "name": "总公司",
+    "sortNo": 0,
+    "createdAt": "2023-01-01T00:00:00",
+    "updatedAt": "2023-01-01T00:00:00"
+  },
+  {
+    "id": 2,
+    "parentId": 1,
+    "name": "技术部",
+    "sortNo": 1,
+    "createdAt": "2023-01-01T00:00:00",
+    "updatedAt": "2023-01-01T00:00:00"
+  }
+]
+```
+
+#### 4.2 获取部门树结构
+```http
+GET /api/platform/external/departments/tree
+```
+
+**响应示例：**
+```json
+[
+  {
+    "id": 1,
+    "parentId": null,
+    "name": "总公司",
+    "sortNo": 0,
+    "children": [
+      {
+        "id": 2,
+        "parentId": 1,
+        "name": "技术部",
+        "sortNo": 1,
+        "children": []
+      },
+      {
+        "id": 3,
+        "parentId": 1,
+        "name": "市场部",
+        "sortNo": 2,
+        "children": []
+      }
+    ]
+  }
+]
+```
+
+#### 4.3 根据部门ID获取部门信息
+```http
+GET /api/platform/external/departments/{id}
+```
+
+#### 4.4 根据父部门ID获取子部门列表
+```http
+GET /api/platform/external/departments/parent/{parentId}
+```
+
+#### 4.5 批量获取部门信息（根据ID列表）
+```http
+POST /api/platform/external/departments/ids
+Content-Type: application/json
+
+[1, 2, 3]
 ```
 
 ## 使用场景

@@ -39,6 +39,10 @@
             <el-icon><Collection /></el-icon>
             <span>通讯录</span>
           </li>
+          <li class="oa-menu-item" @click="goToPlatform">
+            <el-icon><Platform /></el-icon>
+            <span>支撑平台</span>
+          </li>
           <li class="oa-menu-item">
             <el-icon><Setting /></el-icon>
             <span>系统管理</span>
@@ -93,12 +97,17 @@
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { Platform } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const go = (name) => {
   ElMessage.info('功能开发中...')
+}
+
+const goToPlatform = () => {
+  router.push('/platform')
 }
 
 const toggleUserMenu = async () => {

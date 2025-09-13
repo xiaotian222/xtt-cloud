@@ -17,19 +17,6 @@ spring:
     import:
       - optional:nacos:platform.yaml
       - optional:nacos:datasource-config.yaml
-#
-#  datasource:
-#    url: jdbc:mysql://localhost:3306/platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
-#    username: myuser
-#    password: mypassword
-#  data:
-#    redis:
-#      host: 127.0.0.1
-#      port: 6379
-#  cache:
-#    type: redis
-#    redis:
-#      time-to-live: 3600000 # 1小时
 
 # MyBatis配置
 mybatis:

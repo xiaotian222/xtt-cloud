@@ -79,6 +79,15 @@ public class PermissionService {
         Set<String> userPermissions = permissionCache.loadUserPermissions(username);
         return userPermissions.containsAll(permissionCodes);
     }
+
+    // 从UserService移过来的权限相关方法
+    public Set<String> getUserPermissions(Long userId) {
+        return permissionCache.loadUserPermissions(userId);
+    }
+
+    public Set<String> getUserPermissionsByUsername(String username) {
+        return permissionCache.loadUserPermissions(username);
+    }
 }
 
 

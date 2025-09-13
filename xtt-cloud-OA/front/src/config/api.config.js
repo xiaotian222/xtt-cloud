@@ -1,12 +1,14 @@
+import { ENV_CONFIG, getApiBaseUrl, getGatewayUrl, isDevelopment, isProduction } from './env.config.js'
+
 // 后端服务配置管理
 export const API_CONFIG = {
-  // 基础配置
-  BASE_URL: 'http://localhost:30010',
-  GATEWAY_URL: 'http://localhost:30010',
+  // 基础配置 - 从环境配置读取
+  BASE_URL: getApiBaseUrl(),
+  GATEWAY_URL: getGatewayUrl(),
   
   // 服务地址
   AUTH_SERVICE: {
-    BASE_URL: 'http://localhost:30010',
+    BASE_URL: getApiBaseUrl(),
     LOGIN: '/api/auth/login',
     LOGOUT: '/api/auth/logout',
     REFRESH: '/api/auth/refresh',
@@ -15,39 +17,19 @@ export const API_CONFIG = {
     USERS: '/api/auth/users'
   },
   
-  // 中间件服务
-  MIDDLEWARE: {
-    NACOS: 'http://localhost:8848',
-    MYSQL: 'localhost:3306',
-    SEATA: 'localhost:8091',
-    ROCKETMQ: 'localhost:9876'
-  },
+  // 中间件服务 - 从环境配置读取
+  MIDDLEWARE: ENV_CONFIG.MIDDLEWARE,
   
-  // 开发环境配置
+  // 开发环境配置 - 从环境配置读取
   DEV: {
-    ENABLE_MOCK: true,
-    LOG_LEVEL: 'debug',
-    TIMEOUT: 10000
+    ENABLE_MOCK: ENV_CONFIG.ENABLE_MOCK,
+    LOG_LEVEL: ENV_CONFIG.LOG_LEVEL,
+    TIMEOUT: ENV_CONFIG.TIMEOUT
   }
 }
 
-// 环境检测
-export const isDevelopment = () => {
-  return import.meta.env.DEV
-}
-
-export const isProduction = () => {
-  return import.meta.env.PROD
-}
-
-// 获取当前环境的API地址
-export const getApiBaseUrl = () => {
-  if (isDevelopment()) {
-    return API_CONFIG.BASE_URL
-  }
-  // 生产环境可以配置不同的地址
-  return API_CONFIG.BASE_URL
-}
+// 重新导出环境检测函数
+export { isDevelopment, isProduction, getApiBaseUrl, getGatewayUrl } from './env.config.js'
 
 // 获取完整的API地址
 export const getFullApiUrl = (endpoint) => {
@@ -177,3 +159,4 @@ export const ApiCaller = {
     return ApiCaller.request('DELETE', endpoint, null, options)
   }
 }
+
