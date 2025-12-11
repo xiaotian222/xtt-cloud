@@ -1,127 +1,145 @@
 #!/bin/bash
 
-# OA系统启动脚本
-# 用于同时启动前端和后端服务
+# XTT Cloud OA 启动脚本
 
-echo "🚀 启动 OA 系统..."
+# 检查是否在Windows环境下
+if [[ -n "$WINDIR" ]]; then
+    echo "检测到Windows环境，请使用 start.bat 脚本启动"
+    exit 1
+fi
 
-# 检查是否安装了必要的工具
-check_requirements() {
-    echo "📋 检查环境要求..."
-    
-    if ! command -v node &> /dev/null; then
-        echo "❌ Node.js 未安装，请先安装 Node.js"
-        exit 1
+# 定义服务列表
+SERVICES=("nacos" "gateway" "auth" "platform" "document" "front")
+
+# 定义服务端口
+declare -A SERVICE_PORTS
+SERVICE_PORTS["gateway"]=30010
+SERVICE_PORTS["auth"]=8020
+SERVICE_PORTS["platform"]=8085
+SERVICE_PORTS["document"]=8086
+SERVICE_PORTS["front"]=3000
+
+# 定义服务启动命令
+declare -A SERVICE_COMMANDS
+SERVICE_COMMANDS["gateway"]="cd gateway && mvn spring-boot:run"
+SERVICE_COMMANDS["auth"]="cd auth && mvn spring-boot:run"
+SERVICE_COMMANDS["platform"]="cd platform && mvn spring-boot:run"
+SERVICE_COMMANDS["document"]="cd document && mvn spring-boot:run"
+SERVICE_COMMANDS["front"]="cd front && npm run dev"
+
+# 检查端口是否被占用
+check_port() {
+    local port=$1
+    if command -v netstat >/dev/null 2>&1; then
+        if netstat -tuln | grep :$port >/dev/null 2>&1; then
+            return 0
+        fi
+    elif command -v ss >/dev/null 2>&1; then
+        if ss -tuln | grep :$port >/dev/null 2>&1; then
+            return 0
+        fi
     fi
-    
-    if ! command -v npm &> /dev/null; then
-        echo "❌ npm 未安装，请先安装 npm"
-        exit 1
-    fi
-    
-    if ! command -v mvn &> /dev/null; then
-        echo "❌ Maven 未安装，请先安装 Maven"
-        exit 1
-    fi
-    
-    if ! command -v java &> /dev/null; then
-        echo "❌ Java 未安装，请先安装 Java"
-        exit 1
-    fi
-    
-    echo "✅ 环境检查通过"
+    return 1
 }
 
-# 启动后端服务
-start_backend() {
-    echo "🔧 启动后端服务..."
-    cd auth
-    mvn spring-boot:run &
-    AUTH_PID=$!
-    echo "✅ Auth 服务已启动 (PID: $AUTH_PID)"
-    cd ..
-}
-
-# 启动前端服务
-start_frontend() {
-    echo "🎨 启动前端服务..."
-    cd front
-    npm run dev &
-    FRONTEND_PID=$!
-    echo "✅ 前端服务已启动 (PID: $FRONTEND_PID)"
-    cd ..
-}
-
-# 等待服务启动
-wait_for_services() {
-    echo "⏳ 等待服务启动..."
-    sleep 10
+# 启动单个服务
+start_service() {
+    local service=$1
+    local port=${SERVICE_PORTS[$service]}
     
-    # 检查 Auth 服务
-    if curl -s http://localhost:8020/test/health > /dev/null; then
-        echo "✅ Auth 服务运行正常"
+    echo "正在启动 $service 服务..."
+    
+    # 检查端口是否被占用
+    if [[ -n "$port" ]] && check_port $port; then
+        echo "警告: 端口 $port 已被占用，$service 服务可能已在运行"
+        return 1
+    fi
+    
+    # 启动服务
+    if [[ -n "${SERVICE_COMMANDS[$service]}" ]]; then
+        eval "${SERVICE_COMMANDS[$service]}" &
+        echo "$service 服务启动命令已执行"
     else
-        echo "❌ Auth 服务启动失败"
-    fi
-    
-    # 检查前端服务
-    if curl -s http://localhost:3000 > /dev/null; then
-        echo "✅ 前端服务运行正常"
-    else
-        echo "❌ 前端服务启动失败"
+        echo "未找到 $service 服务的启动命令"
+        return 1
     fi
 }
 
-# 显示服务信息
-show_info() {
-    echo ""
-    echo "🎉 OA 系统启动完成！"
-    echo ""
-    echo "📱 前端地址: http://localhost:3000"
-    echo "🔧 Auth 服务: http://localhost:8020"
-    echo ""
-    echo "👤 测试账号:"
-    echo "   管理员: admin / password"
-    echo "   用户: user / password"
-    echo "   经理: manager / password"
-    echo ""
-    echo "🛑 按 Ctrl+C 停止所有服务"
-    echo ""
+# 停止单个服务
+stop_service() {
+    local service=$1
+    echo "正在停止 $service 服务..."
+    pkill -f "$service"
 }
 
-# 清理函数
-cleanup() {
+# 显示帮助信息
+show_help() {
+    echo "用法: $0 [选项] [服务名]"
+    echo "选项:"
+    echo "  start [服务名]   启动指定服务或所有服务"
+    echo "  stop [服务名]    停止指定服务或所有服务"
+    echo "  restart [服务名] 重启指定服务或所有服务"
+    echo "  status          查看服务状态"
+    echo "  help            显示帮助信息"
     echo ""
-    echo "🛑 正在停止服务..."
-    
-    if [ ! -z "$AUTH_PID" ]; then
-        kill $AUTH_PID 2>/dev/null
-        echo "✅ Auth 服务已停止"
-    fi
-    
-    if [ ! -z "$FRONTEND_PID" ]; then
-        kill $FRONTEND_PID 2>/dev/null
-        echo "✅ 前端服务已停止"
-    fi
-    
-    echo "👋 再见！"
-    exit 0
+    echo "服务列表: ${SERVICES[*]}"
 }
 
-# 设置信号处理
-trap cleanup SIGINT SIGTERM
-
-# 主函数
-main() {
-    check_requirements
-    start_backend
-    start_frontend
-    wait_for_services
-    show_info
-    
-    # 保持脚本运行
-    wait
+# 查看服务状态
+show_status() {
+    echo "服务状态:"
+    for service in "${SERVICES[@]}"; do
+        local port=${SERVICE_PORTS[$service]}
+        if [[ -n "$port" ]] && check_port $port; then
+            echo "  $service: 运行中 (端口: $port)"
+        else
+            echo "  $service: 未运行"
+        fi
+    done
 }
 
-# 运行主函数
-main
+# 主逻辑
+case "${1:-start}" in
+    start)
+        if [[ -n "$2" ]]; then
+            # 启动指定服务
+            start_service "$2"
+        else
+            # 启动所有服务
+            echo "启动所有服务..."
+            for service in "${SERVICES[@]}"; do
+                start_service "$service"
+                sleep 2
+            done
+            echo "所有服务启动命令已执行，请稍候查看服务状态"
+        fi
+        ;;
+    stop)
+        if [[ -n "$2" ]]; then
+            # 停止指定服务
+            stop_service "$2"
+        else
+            # 停止所有服务
+            echo "停止所有服务..."
+            for service in "${SERVICES[@]}"; do
+                stop_service "$service"
+            done
+        fi
+        ;;
+    restart)
+        $0 stop "$2"
+        sleep 3
+        $0 start "$2"
+        ;;
+    status)
+        show_status
+        ;;
+    help)
+        show_help
+        ;;
+    *)
+        echo "未知选项: $1"
+        show_help
+        exit 1
+        ;;
+esac

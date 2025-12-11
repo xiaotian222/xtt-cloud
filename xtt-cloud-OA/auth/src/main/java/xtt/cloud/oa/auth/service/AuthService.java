@@ -2,8 +2,11 @@ package xtt.cloud.oa.auth.service;
 
 import xtt.cloud.oa.auth.dto.LoginRequest;
 import xtt.cloud.oa.auth.dto.LoginResponse;
+import xtt.cloud.oa.common.BusinessException;
 import xtt.cloud.oa.common.dto.UserInfoDto;
 import xtt.cloud.oa.auth.util.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,11 +22,16 @@ import java.util.Optional;
 @Service
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
     @Autowired
     private UserService userService;
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     @Value("${jwt.expiration}")
     private Long expiration;
@@ -37,13 +45,13 @@ public class AuthService {
 
         // 验证用户凭据
         if (!userService.authenticate(username, password)) {
-            throw new RuntimeException("Invalid username or password");
+            throw new BusinessException("用户名或密码错误");
         }
 
         // 获取用户信息
         Optional<UserInfoDto> userOpt = userService.findByUsername(username);
         if (!userOpt.isPresent()) {
-            throw new RuntimeException("User not found");
+            throw new BusinessException("用户不存在");
         }
 
         UserInfoDto user = userOpt.get();
@@ -53,6 +61,7 @@ public class AuthService {
         String token = jwtUtil.generateToken(username, role, user.getId());
         String refreshToken = jwtUtil.generateRefreshToken(username, user.getId());
 
+        log.info("User logged in successfully: {}", username);
         return new LoginResponse(token, refreshToken, username, role, expiration);
     }
 
@@ -65,13 +74,18 @@ public class AuthService {
             
             // 验证 refresh token
             if (!jwtUtil.validateToken(refreshToken, username)) {
-                throw new RuntimeException("Invalid refresh token");
+                throw new BusinessException("无效的刷新令牌");
+            }
+
+            // 检查 refresh token 是否在黑名单中
+            if (tokenBlacklistService.isBlacklisted(refreshToken)) {
+                throw new BusinessException("刷新令牌已失效");
             }
 
             // 获取用户信息
             Optional<UserInfoDto> userOpt = userService.findByUsername(username);
             if (!userOpt.isPresent()) {
-                throw new RuntimeException("User not found");
+                throw new BusinessException("用户不存在");
             }
 
             UserInfoDto user = userOpt.get();
@@ -81,9 +95,13 @@ public class AuthService {
             String newToken = jwtUtil.generateToken(username, role, user.getId());
             String newRefreshToken = jwtUtil.generateRefreshToken(username, user.getId());
 
+            log.info("Token refreshed successfully for user: {}", username);
             return new LoginResponse(newToken, newRefreshToken, username, role, expiration);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Invalid refresh token");
+            log.error("Token refresh failed", e);
+            throw new BusinessException("刷新令牌失败");
         }
     }
 
@@ -92,9 +110,16 @@ public class AuthService {
      */
     public boolean validateToken(String token) {
         try {
+            // 先检查 token 是否在黑名单中
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                log.warn("Token is blacklisted");
+                return false;
+            }
+
             String username = jwtUtil.extractUsername(token);
             return jwtUtil.validateToken(token, username);
         } catch (Exception e) {
+            log.error("Token validation failed", e);
             return false;
         }
     }
@@ -115,12 +140,23 @@ public class AuthService {
     }
 
     /**
-     * Logout (in JWT, logout is typically handled on the client side)
-     * This method can be used to invalidate tokens if needed
+     * Logout - 将 token 加入黑名单
      */
     public void logout(String token) {
-        // 在实际项目中，可以将 token 加入黑名单
-        // 这里只是简单的实现
-        System.out.println("User logged out: " + jwtUtil.extractUsername(token));
+        try {
+            // 将 token 加入黑名单
+            tokenBlacklistService.addToBlacklist(token);
+            
+            // 可选：清除用户缓存（如果用户信息发生变化）
+            String username = jwtUtil.extractUsername(token);
+            if (username != null) {
+                userService.clearUserCache(username);
+            }
+            
+            log.info("User logged out: {}", username);
+        } catch (Exception e) {
+            log.error("Logout failed", e);
+            // 即使加入黑名单失败，也记录日志，但不抛出异常
+        }
     }
 }

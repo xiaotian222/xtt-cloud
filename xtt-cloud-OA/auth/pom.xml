@@ -119,6 +119,12 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
             <version>3.1.8</version>
         </dependency>
+
+        <!-- Redis for caching and token blacklist -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

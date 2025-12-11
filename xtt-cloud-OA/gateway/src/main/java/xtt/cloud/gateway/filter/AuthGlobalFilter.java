@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import xtt.cloud.gateway.config.AuthConfig;
+import xtt.cloud.gateway.service.TokenBlacklistService;
 import xtt.cloud.gateway.util.JwtUtil;
 
 import java.nio.charset.StandardCharsets;
@@ -41,6 +42,9 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
     @Autowired
     private AuthConfig authConfig;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -75,25 +79,39 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         String token = authHeader.substring(7);
         
         try {
-            // 验证 token
+            // 验证 token 格式和有效性
             if (!jwtUtil.validateToken(token)) {
                 log.warn("Invalid token for path: {}", path);
                 return unauthorizedResponse(exchange, "无效的认证令牌");
             }
 
-            // 提取用户信息并添加到请求头
-            String username = jwtUtil.extractUsername(token);
-            String role = jwtUtil.extractRole(token);
-            
-            // 将用户信息添加到请求头，传递给下游服务
-            ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Name", username)
-                    .header("X-User-Role", role != null ? role : "")
-                    .build();
+            // 检查 token 是否在黑名单中（响应式检查）
+            return tokenBlacklistService.isBlacklisted(token)
+                    .flatMap(isBlacklisted -> {
+                        if (isBlacklisted) {
+                            log.warn("Token is blacklisted for path: {}", path);
+                            return unauthorizedResponse(exchange, "认证令牌已失效");
+                        }
 
-            log.debug("User authenticated: {} with role: {}", username, role);
-            
-            return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                        // 提取用户信息并添加到请求头
+                        try {
+                            String username = jwtUtil.extractUsername(token);
+                            String role = jwtUtil.extractRole(token);
+                            
+                            // 将用户信息添加到请求头，传递给下游服务
+                            ServerHttpRequest mutatedRequest = request.mutate()
+                                    .header("X-User-Name", username)
+                                    .header("X-User-Role", role != null ? role : "")
+                                    .build();
+
+                            log.debug("User authenticated: {} with role: {}", username, role);
+                            
+                            return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                        } catch (Exception e) {
+                            log.error("Failed to extract user info from token", e);
+                            return unauthorizedResponse(exchange, "认证令牌解析失败");
+                        }
+                    });
             
         } catch (Exception e) {
             log.error("Token validation error for path: {}, error: {}", path, e.getMessage());

@@ -1,0 +1,51 @@
+# Document Service Configuration
+server:
+  port: 8087
+
+spring:
+  application:
+    name: document
+  sql:
+    init:
+      mode: never
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos-server:8848
+        group: xtt-cloud-oa
+      config:
+        server-addr: nacos-server:8848
+        group: xtt-cloud-oa
+        file-extension: yaml
+  datasource:
+    url: jdbc:mysql://mysql:3306/document_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&useSSL=false
+    #    driver-class-name: com.mysql.jdbc.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: 'myuser'
+    password: 'mypassword'
+  main:
+    allow-bean-definition-overriding: true
+
+
+# MyBatis Plus
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: xtt.cloud.oa.document.domain.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    xtt.cloud.oa.document: INFO
+    xtt.cloud.oa.document.application: INFO
+    xtt.cloud.oa.document.interfaces: DEBUG
+    org.springframework: WARN
+    com.baomidou.mybatisplus: WARN
+    org.apache.ibatis: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+

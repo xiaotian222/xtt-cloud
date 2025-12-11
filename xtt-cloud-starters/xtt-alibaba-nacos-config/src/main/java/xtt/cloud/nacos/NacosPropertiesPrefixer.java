@@ -67,11 +67,15 @@ public final class NacosPropertiesPrefixer {
 
 	public static String getPrefix(Binder binder) {
         //这里 spring.nacos -> spring.cloud.nacos 不知道为什么原来的作者为什么写错，吊毛个坑b
+        //String prefix = "spring.nacos";
+        //后来发现，这里应该不是写错了，应该是没有获取NacosPropertiesPrefixer.PREFIX。
+        // spi接口没有注册？getPrefixFromSpi这个方法很有嫌疑。
 		String prefix = "spring.cloud.nacos";
 		BindResult<String> bind = binder.bind("spring.nacos.properties.prefix", String.class);
 		if (!bind.isBound()) {
 			if (StringUtils.isNotBlank(NacosPropertiesPrefixer.PREFIX)) {
 				prefix = NacosPropertiesPrefixer.PREFIX;
+
 			}
 		}
 		else {

@@ -1,0 +1,20 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: document
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos-server:8848
+        group: xtt-cloud-oa
+      config:
+        server-addr: nacos-server:8848
+        group: xtt-cloud-oa
+        file-extension: yaml
+  config:
+    import:
+      - optional:nacos:document.yaml
+#      - optional:nacos:datasource-config.yaml
+
