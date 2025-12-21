@@ -6,12 +6,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.common.Result;
 import xtt.cloud.oa.document.application.flow.FlowService;
-import xtt.cloud.oa.document.application.flow.core.TaskService;
+import xtt.cloud.oa.document.application.flow.task.TaskService;
 import xtt.cloud.oa.document.domain.entity.flow.FlowInstance;
 import xtt.cloud.oa.document.domain.entity.flow.FlowNodeInstance;
 import xtt.cloud.oa.document.domain.entity.flow.Handling;
 import xtt.cloud.oa.document.domain.entity.flow.task.DoneTask;
 import xtt.cloud.oa.document.domain.entity.flow.task.TodoTask;
+import xtt.cloud.oa.document.domain.entity.flow.history.ActivityHistory;
+import xtt.cloud.oa.document.domain.entity.flow.history.FlowInstanceHistory;
+import xtt.cloud.oa.document.domain.entity.flow.history.TaskHistory;
 
 import java.util.List;
 
@@ -347,6 +350,71 @@ public class FlowController {
         } catch (Exception e) {
             log.error("检查子流程并继续父流程失败，子流程实例ID: {}", subFlowInstanceId, e);
             return Result.error("操作失败: " + e.getMessage());
+        }
+    }
+    
+    // ========== 历史记录查询 ==========
+    
+    /**
+     * 获取流程实例历史
+     */
+    @GetMapping("/{flowInstanceId}/history/instance")
+    public Result<FlowInstanceHistory> getFlowInstanceHistory(@PathVariable Long flowInstanceId) {
+        log.debug("收到查询流程实例历史请求，流程实例ID: {}", flowInstanceId);
+        try {
+            FlowInstanceHistory history = flowService.getFlowInstanceHistory(flowInstanceId);
+            if (history == null) {
+                return Result.error("流程实例历史不存在");
+            }
+            return Result.success(history);
+        } catch (Exception e) {
+            log.error("查询流程实例历史失败，流程实例ID: {}", flowInstanceId, e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取任务历史列表
+     */
+    @GetMapping("/{flowInstanceId}/history/tasks")
+    public Result<List<TaskHistory>> getTaskHistoryList(@PathVariable Long flowInstanceId) {
+        log.debug("收到查询任务历史列表请求，流程实例ID: {}", flowInstanceId);
+        try {
+            List<TaskHistory> historyList = flowService.getTaskHistoryList(flowInstanceId);
+            return Result.success(historyList);
+        } catch (Exception e) {
+            log.error("查询任务历史列表失败，流程实例ID: {}", flowInstanceId, e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取活动历史列表
+     */
+    @GetMapping("/{flowInstanceId}/history/activities")
+    public Result<List<ActivityHistory>> getActivityHistoryList(@PathVariable Long flowInstanceId) {
+        log.debug("收到查询活动历史列表请求，流程实例ID: {}", flowInstanceId);
+        try {
+            List<ActivityHistory> historyList = flowService.getActivityHistoryList(flowInstanceId);
+            return Result.success(historyList);
+        } catch (Exception e) {
+            log.error("查询活动历史列表失败，流程实例ID: {}", flowInstanceId, e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 根据处理人查询任务历史
+     */
+    @GetMapping("/history/tasks/by-handler")
+    public Result<List<TaskHistory>> getTaskHistoryByHandler(@RequestParam Long handlerId) {
+        log.debug("收到根据处理人查询任务历史请求，处理人ID: {}", handlerId);
+        try {
+            List<TaskHistory> historyList = flowService.getTaskHistoryByHandler(handlerId);
+            return Result.success(historyList);
+        } catch (Exception e) {
+            log.error("根据处理人查询任务历史失败，处理人ID: {}", handlerId, e);
+            return Result.error("查询失败: " + e.getMessage());
         }
     }
 }

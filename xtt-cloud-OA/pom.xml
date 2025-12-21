@@ -24,6 +24,7 @@
         <module>platform</module>
         <module>gateway</module>
         <module>document</module>
+        <module>workflow</module>
     </modules>
 
     <dependencyManagement>

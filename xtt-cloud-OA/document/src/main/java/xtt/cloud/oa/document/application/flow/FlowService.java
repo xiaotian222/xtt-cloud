@@ -1,6 +1,5 @@
 package xtt.cloud.oa.document.application.flow;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -8,22 +7,20 @@ import org.springframework.transaction.annotation.Transactional;
 import xtt.cloud.oa.common.BusinessException;
 import xtt.cloud.oa.document.application.flow.core.FlowApprovalService;
 import xtt.cloud.oa.document.application.flow.core.FlowEngineService;
-import xtt.cloud.oa.document.application.flow.core.FreeFlowEngineService;
-import xtt.cloud.oa.document.application.flow.core.TaskService;
+import xtt.cloud.oa.document.application.flow.core.free.FreeFlowEngineService;
+import xtt.cloud.oa.document.application.flow.task.TaskService;
 import xtt.cloud.oa.document.application.flow.core.DocumentService;
-import xtt.cloud.oa.document.domain.entity.flow.Document;
+import xtt.cloud.oa.document.application.flow.history.FlowHistoryService;
+import xtt.cloud.oa.document.domain.entity.flow.definition.Document;
+import xtt.cloud.oa.document.domain.entity.flow.definition.FlowDefinition;
 import xtt.cloud.oa.document.domain.entity.flow.FlowInstance;
-import xtt.cloud.oa.document.domain.entity.flow.FlowNode;
+import xtt.cloud.oa.document.domain.entity.flow.definition.FlowNode;
 import xtt.cloud.oa.document.domain.entity.flow.FlowNodeInstance;
 import xtt.cloud.oa.document.domain.entity.flow.Handling;
-import xtt.cloud.oa.document.domain.entity.flow.task.DoneTask;
-import xtt.cloud.oa.document.domain.mapper.flow.ExternalSignReceiptMapper;
-import xtt.cloud.oa.document.domain.mapper.flow.FlowInstanceMapper;
-import xtt.cloud.oa.document.domain.mapper.flow.FlowNodeInstanceMapper;
-import xtt.cloud.oa.document.domain.mapper.flow.FlowNodeMapper;
-import xtt.cloud.oa.document.domain.mapper.flow.HandlingMapper;
-import xtt.cloud.oa.document.domain.mapper.gw.IssuanceInfoMapper;
-import xtt.cloud.oa.document.domain.mapper.gw.ReceiptInfoMapper;
+import xtt.cloud.oa.document.domain.entity.flow.history.ActivityHistory;
+import xtt.cloud.oa.document.domain.entity.flow.history.FlowInstanceHistory;
+import xtt.cloud.oa.document.domain.entity.flow.history.TaskHistory;
+import xtt.cloud.oa.document.application.flow.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,7 +52,7 @@ import java.util.List;
  *   <li>FlowApprovalService：审批处理服务</li>
  * </ul>
  * 
- * <p>注意：待办已办管理请使用 {@link xtt.cloud.oa.document.application.flow.core.TaskService}</p>
+ * <p>注意：待办已办管理请使用 {@link TaskService}</p>
  * 
  * @author xtt
  * @since 2023.0.3.3
@@ -71,41 +68,36 @@ public class FlowService {
     private final FreeFlowEngineService freeFlowEngineService;
     private final TaskService taskService;
     private final DocumentService documentService;
+    private final FlowHistoryService flowHistoryService;
     
-    // 流程实例和扩展信息 Mapper
-    private final FlowInstanceMapper flowInstanceMapper;
-    private final FlowNodeMapper flowNodeMapper;
-    private final FlowNodeInstanceMapper flowNodeInstanceMapper;
-    private final IssuanceInfoMapper issuanceInfoMapper;
-    private final ReceiptInfoMapper receiptInfoMapper;
-    private final ExternalSignReceiptMapper externalSignReceiptMapper;
-    private final HandlingMapper handlingMapper;
-    
+    // 流程实例和扩展信息 Repository
+    private final FlowInstanceRepository flowInstanceRepository;
+    private final FlowNodeRepository flowNodeRepository;
+    private final FlowNodeInstanceRepository flowNodeInstanceRepository;
+    private final FlowDefinitionRepository flowDefinitionRepository;
+
     public FlowService(
             FlowEngineService flowEngineService,
             FlowApprovalService flowApprovalService,
             FreeFlowEngineService freeFlowEngineService,
             TaskService taskService,
             DocumentService documentService,
-            FlowInstanceMapper flowInstanceMapper,
-            FlowNodeMapper flowNodeMapper,
-            FlowNodeInstanceMapper flowNodeInstanceMapper,
-            IssuanceInfoMapper issuanceInfoMapper,
-            ReceiptInfoMapper receiptInfoMapper,
-            ExternalSignReceiptMapper externalSignReceiptMapper,
-            HandlingMapper handlingMapper) {
+            FlowHistoryService flowHistoryService,
+            FlowInstanceRepository flowInstanceRepository,
+            FlowNodeRepository flowNodeRepository,
+            FlowNodeInstanceRepository flowNodeInstanceRepository,
+            FlowDefinitionRepository flowDefinitionRepository,
+            HandlingRepository handlingRepository) {
         this.flowEngineService = flowEngineService;
         this.flowApprovalService = flowApprovalService;
         this.freeFlowEngineService = freeFlowEngineService;
         this.taskService = taskService;
         this.documentService = documentService;
-        this.flowInstanceMapper = flowInstanceMapper;
-        this.flowNodeMapper = flowNodeMapper;
-        this.flowNodeInstanceMapper = flowNodeInstanceMapper;
-        this.issuanceInfoMapper = issuanceInfoMapper;
-        this.receiptInfoMapper = receiptInfoMapper;
-        this.externalSignReceiptMapper = externalSignReceiptMapper;
-        this.handlingMapper = handlingMapper;
+        this.flowHistoryService = flowHistoryService;
+        this.flowInstanceRepository = flowInstanceRepository;
+        this.flowNodeRepository = flowNodeRepository;
+        this.flowNodeInstanceRepository = flowNodeInstanceRepository;
+        this.flowDefinitionRepository = flowDefinitionRepository;
     }
     
     // ========== 流程引擎核心接口 ==========
@@ -122,7 +114,7 @@ public class FlowService {
         try {
             flowInstance.setCreatedAt(LocalDateTime.now());
             flowInstance.setUpdatedAt(LocalDateTime.now());
-            flowInstanceMapper.insert(flowInstance);
+            flowInstanceRepository.save(flowInstance);
             log.info("创建流程实例成功，ID: {}", flowInstance.getId());
             return flowInstance;
         } catch (Exception e) {
@@ -142,7 +134,17 @@ public class FlowService {
     public FlowInstance startFlow(Long documentId, Long flowDefId) {
         log.info("启动流程，公文ID: {}, 流程定义ID: {}", documentId, flowDefId);
         try {
-            return flowEngineService.startFlow(documentId, flowDefId);
+            Document document = documentService.getDocument(documentId);
+            if (document == null) {
+                throw new BusinessException("公文不存在");
+            }
+            
+            FlowDefinition flowDef = flowDefinitionRepository.findById(flowDefId);
+            if (flowDef == null) {
+                throw new BusinessException("流程定义不存在");
+            }
+            
+            return flowEngineService.startFlow(document, flowDef);
         } catch (BusinessException e) {
             log.error("启动流程失败，公文ID: {}, 流程定义ID: {}", documentId, flowDefId, e);
             throw e;
@@ -162,7 +164,28 @@ public class FlowService {
     @Transactional
     public void approve(Long nodeInstanceId, String comments, Long approverId) {
         log.info("审批同意，节点实例ID: {}, 审批人ID: {}", nodeInstanceId, approverId);
-        flowApprovalService.approve(nodeInstanceId, comments, approverId);
+        
+        FlowNodeInstance nodeInstance = flowNodeInstanceRepository.findById(nodeInstanceId);
+        if (nodeInstance == null) {
+            throw new BusinessException("节点实例不存在");
+        }
+        
+        FlowInstance flowInstance = flowInstanceRepository.findById(nodeInstance.getFlowInstanceId());
+        if (flowInstance == null) {
+            throw new BusinessException("流程实例不存在");
+        }
+        
+        Document document = documentService.getDocument(flowInstance.getDocumentId());
+        if (document == null) {
+            throw new BusinessException("文档不存在");
+        }
+        
+        FlowNode nodeDef = flowNodeRepository.findById(nodeInstance.getNodeId());
+        if (nodeDef == null) {
+            throw new BusinessException("节点定义不存在");
+        }
+        
+        flowApprovalService.approve(nodeInstance, flowInstance, document, nodeDef, comments, approverId);
     }
     
     /**
@@ -175,7 +198,29 @@ public class FlowService {
     @Transactional
     public void reject(Long nodeInstanceId, String comments, Long approverId) {
         log.info("审批拒绝，节点实例ID: {}, 审批人ID: {}", nodeInstanceId, approverId);
-        flowApprovalService.reject(nodeInstanceId, comments, approverId);
+        
+        // 在 FlowService 中组装对象
+        FlowNodeInstance nodeInstance = flowNodeInstanceRepository.findById(nodeInstanceId);
+        if (nodeInstance == null) {
+            throw new BusinessException("节点实例不存在");
+        }
+        
+        FlowInstance flowInstance = flowInstanceRepository.findById(nodeInstance.getFlowInstanceId());
+        if (flowInstance == null) {
+            throw new BusinessException("流程实例不存在");
+        }
+        
+        Document document = documentService.getDocument(flowInstance.getDocumentId());
+        if (document == null) {
+            throw new BusinessException("文档不存在");
+        }
+        
+        FlowNode nodeDef = flowNodeRepository.findById(nodeInstance.getNodeId());
+        if (nodeDef == null) {
+            throw new BusinessException("节点定义不存在");
+        }
+        
+        flowApprovalService.reject(nodeInstance, flowInstance, document, nodeDef, comments, approverId);
     }
     
     /**
@@ -188,7 +233,29 @@ public class FlowService {
     @Transactional
     public void forward(Long nodeInstanceId, String comments, Long approverId) {
         log.info("审批转发，节点实例ID: {}, 审批人ID: {}", nodeInstanceId, approverId);
-        flowApprovalService.forward(nodeInstanceId, comments, approverId);
+        
+        // 在 FlowService 中组装对象
+        FlowNodeInstance nodeInstance = flowNodeInstanceRepository.findById(nodeInstanceId);
+        if (nodeInstance == null) {
+            throw new BusinessException("节点实例不存在");
+        }
+        
+        FlowInstance flowInstance = flowInstanceRepository.findById(nodeInstance.getFlowInstanceId());
+        if (flowInstance == null) {
+            throw new BusinessException("流程实例不存在");
+        }
+        
+        Document document = documentService.getDocument(flowInstance.getDocumentId());
+        if (document == null) {
+            throw new BusinessException("文档不存在");
+        }
+        
+        FlowNode nodeDef = flowNodeRepository.findById(nodeInstance.getNodeId());
+        if (nodeDef == null) {
+            throw new BusinessException("节点定义不存在");
+        }
+        
+        flowApprovalService.forward(nodeInstance, flowInstance, document, nodeDef, comments, approverId);
     }
     
     /**
@@ -201,11 +268,33 @@ public class FlowService {
     @Transactional
     public void returnBack(Long nodeInstanceId, String comments, Long approverId) {
         log.info("审批退回，节点实例ID: {}, 审批人ID: {}", nodeInstanceId, approverId);
-        flowApprovalService.returnBack(nodeInstanceId, comments, approverId);
+        
+        // 在 FlowService 中组装对象
+        FlowNodeInstance nodeInstance = flowNodeInstanceRepository.findById(nodeInstanceId);
+        if (nodeInstance == null) {
+            throw new BusinessException("节点实例不存在");
+        }
+        
+        FlowInstance flowInstance = flowInstanceRepository.findById(nodeInstance.getFlowInstanceId());
+        if (flowInstance == null) {
+            throw new BusinessException("流程实例不存在");
+        }
+        
+        Document document = documentService.getDocument(flowInstance.getDocumentId());
+        if (document == null) {
+            throw new BusinessException("文档不存在");
+        }
+        
+        FlowNode nodeDef = flowNodeRepository.findById(nodeInstance.getNodeId());
+        if (nodeDef == null) {
+            throw new BusinessException("节点定义不存在");
+        }
+        
+        flowApprovalService.returnBack(nodeInstance, flowInstance, document, nodeDef, comments, approverId);
     }
-    
-    // ========== 流程实例管理 ==========
-    
+
+
+    // ========== todo 流程实例管理 ==========
     /**
      * 获取流程实例详情
      * 
@@ -214,7 +303,7 @@ public class FlowService {
      */
     public FlowInstance getFlowInstance(Long id) {
         log.debug("获取流程实例详情，ID: {}", id);
-        return flowInstanceMapper.selectById(id);
+        return flowInstanceRepository.findById(id);
     }
     
     /**
@@ -225,84 +314,12 @@ public class FlowService {
      */
     public FlowInstance getFlowInstanceByDocumentId(Long documentId) {
         log.debug("根据公文ID获取流程实例，公文ID: {}", documentId);
-        return flowInstanceMapper.selectOne(
-            new LambdaQueryWrapper<FlowInstance>()
-                .eq(FlowInstance::getDocumentId, documentId)
-                .orderByDesc(FlowInstance::getCreatedAt)
-                .last("LIMIT 1")
-        );
+        // TODO: 在 Repository 中添加查询方法
+        List<FlowInstance> instances = flowInstanceRepository.findByDocumentId(documentId);
+        return instances.isEmpty() ? null : instances.get(0);
     }
 
-    // ========== 承办记录 ==========
-    
-    /**
-     * 创建承办记录
-     * 
-     * @param handling 承办记录
-     * @return 承办记录
-     */
-    @Transactional
-    public Handling createHandling(Handling handling) {
-        log.info("创建承办记录，流程实例ID: {}", handling.getFlowInstanceId());
-        try {
-            handling.setCreatedAt(LocalDateTime.now());
-            handling.setUpdatedAt(LocalDateTime.now());
-            handlingMapper.insert(handling);
-            log.info("创建承办记录成功，ID: {}", handling.getId());
-            return handling;
-        } catch (Exception e) {
-            log.error("创建承办记录失败，流程实例ID: {}", handling.getFlowInstanceId(), e);
-            throw new BusinessException("创建承办记录失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 更新承办记录
-     * 
-     * @param id 承办记录ID
-     * @param result 承办结果
-     * @param status 状态
-     * @return 承办记录
-     */
-    @Transactional
-    public Handling updateHandling(Long id, String result, Integer status) {
-        log.info("更新承办记录，ID: {}, 状态: {}", id, status);
-        try {
-            Handling handling = handlingMapper.selectById(id);
-            if (handling == null) {
-                throw new BusinessException("承办记录不存在");
-            }
-            
-            handling.setHandlingResult(result);
-            handling.setStatus(status);
-            handling.setUpdatedAt(LocalDateTime.now());
-            handlingMapper.updateById(handling);
-            
-            log.info("更新承办记录成功，ID: {}", id);
-            return handling;
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("更新承办记录失败，ID: {}", id, e);
-            throw new BusinessException("更新承办记录失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 获取承办记录列表
-     * 
-     * @param flowInstanceId 流程实例ID
-     * @return 承办记录列表
-     */
-    public List<Handling> getHandlingsByFlowId(Long flowInstanceId) {
-        log.debug("获取承办记录列表，流程实例ID: {}", flowInstanceId);
-        return handlingMapper.selectList(
-            new LambdaQueryWrapper<Handling>()
-                .eq(Handling::getFlowInstanceId, flowInstanceId)
-                .orderByDesc(Handling::getCreatedAt)
-        );
-    }
-    
+
     // ========== 固定流和自由流整合接口 ==========
     
     /**
@@ -329,13 +346,13 @@ public class FlowService {
         
         try {
             // 1. 验证节点实例
-            FlowNodeInstance nodeInstance = flowNodeInstanceMapper.selectById(nodeInstanceId);
+            FlowNodeInstance nodeInstance = flowNodeInstanceRepository.findById(nodeInstanceId);
             if (nodeInstance == null) {
                 throw new BusinessException("节点实例不存在");
             }
             
             // 2. 验证节点是否允许自由流
-            FlowNode nodeDef = flowNodeMapper.selectById(nodeInstance.getNodeId());
+            FlowNode nodeDef = flowNodeRepository.findById(nodeInstance.getNodeId());
             if (nodeDef.getAllowFreeFlow() == null || nodeDef.getAllowFreeFlow() != 1) {
                 throw new BusinessException("该节点不允许自由流转");
             }
@@ -345,9 +362,20 @@ public class FlowService {
                 throw new BusinessException("节点状态不正确，无法执行自由流转");
             }
             
-            // 4. 调用自由流引擎执行动作
+            // 4. 获取流程实例和文档信息
+            FlowInstance flowInstance = flowInstanceRepository.findById(nodeInstance.getFlowInstanceId());
+            if (flowInstance == null) {
+                throw new BusinessException("流程实例不存在");
+            }
+            
+            Document document = documentService.getDocument(flowInstance.getDocumentId());
+            if (document == null) {
+                throw new BusinessException("文档不存在");
+            }
+            
+            // 5. 调用自由流引擎执行动作（传递对象）
             FlowNodeInstance newNodeInstance = freeFlowEngineService.executeAction(
-                nodeInstanceId,
+                nodeInstance.getId(),
                 actionId,
                 selectedDeptIds,
                 selectedUserIds,
@@ -355,16 +383,14 @@ public class FlowService {
                 operatorId
             );
             
-            // 5. 更新当前节点实例状态
+            // 6. 更新当前节点实例状态
             nodeInstance.setStatus(FlowNodeInstance.STATUS_COMPLETED);
             nodeInstance.setComments("已执行自由流转: " + comment);
             nodeInstance.setHandledAt(LocalDateTime.now());
             nodeInstance.setUpdatedAt(LocalDateTime.now());
-            flowNodeInstanceMapper.updateById(nodeInstance);
+            flowNodeInstanceRepository.update(nodeInstance);
             
-            // 6. 创建已办任务
-            FlowInstance flowInstance = flowInstanceMapper.selectById(nodeInstance.getFlowInstanceId());
-            Document document = documentService.getDocument(flowInstance.getDocumentId());
+            // 7. 创建已办任务
             taskService.createDoneTask(nodeInstance, "自由流转", comment, flowInstance, document);
             taskService.markAsHandled(nodeInstance.getId(), operatorId);
             
@@ -398,7 +424,7 @@ public class FlowService {
         
         try {
             // 1. 验证父流程实例
-            FlowInstance parentFlowInstance = flowInstanceMapper.selectById(parentFlowInstanceId);
+            FlowInstance parentFlowInstance = flowInstanceRepository.findById(parentFlowInstanceId);
             if (parentFlowInstance == null) {
                 throw new BusinessException("父流程实例不存在");
             }
@@ -410,13 +436,23 @@ public class FlowService {
                 throw new BusinessException("只能在自由流或混合流中启动固定子流程");
             }
             
-            // 3. 启动固定子流程
-            FlowInstance subFlowInstance = flowEngineService.startFlow(documentId, flowDefId);
+            // 3. 组装对象并启动固定子流程
+            Document document = documentService.getDocument(documentId);
+            if (document == null) {
+                throw new BusinessException("文档不存在");
+            }
+            
+            FlowDefinition flowDef = flowDefinitionRepository.findById(flowDefId);
+            if (flowDef == null) {
+                throw new BusinessException("流程定义不存在");
+            }
+            
+            FlowInstance subFlowInstance = flowEngineService.startFlow(document, flowDef);
             
             // 4. 设置父子关系
             subFlowInstance.setParentFlowInstanceId(parentFlowInstanceId);
             subFlowInstance.setFlowMode(FlowInstance.FLOW_MODE_FIXED);
-            flowInstanceMapper.updateById(subFlowInstance);
+            flowInstanceRepository.update(subFlowInstance);
             
             log.info("在自由流中启动固定子流程成功，子流程实例ID: {}", subFlowInstance.getId());
             return subFlowInstance;
@@ -441,7 +477,7 @@ public class FlowService {
         
         try {
             // 1. 获取子流程实例
-            FlowInstance subFlowInstance = flowInstanceMapper.selectById(subFlowInstanceId);
+            FlowInstance subFlowInstance = flowInstanceRepository.findById(subFlowInstanceId);
             if (subFlowInstance == null) {
                 throw new BusinessException("子流程实例不存在");
             }
@@ -458,7 +494,7 @@ public class FlowService {
                 return;
             }
             
-            FlowInstance parentFlowInstance = flowInstanceMapper.selectById(subFlowInstance.getParentFlowInstanceId());
+            FlowInstance parentFlowInstance = flowInstanceRepository.findById(subFlowInstance.getParentFlowInstanceId());
             if (parentFlowInstance == null) {
                 log.warn("父流程实例不存在，子流程实例ID: {}, 父流程实例ID: {}", 
                         subFlowInstanceId, subFlowInstance.getParentFlowInstanceId());
@@ -479,6 +515,54 @@ public class FlowService {
             log.error("检查子流程并继续父流程失败，子流程实例ID: {}", subFlowInstanceId, e);
             throw new BusinessException("检查子流程并继续父流程失败: " + e.getMessage());
         }
+    }
+
+
+
+    // ========== 历史记录查询 ==========
+    
+    /**
+     * 获取流程实例历史
+     * 
+     * @param flowInstanceId 流程实例ID
+     * @return 流程实例历史记录
+     */
+    public FlowInstanceHistory getFlowInstanceHistory(Long flowInstanceId) {
+        log.debug("查询流程实例历史，流程实例ID: {}", flowInstanceId);
+        return flowHistoryService.getFlowInstanceHistory(flowInstanceId);
+    }
+    
+    /**
+     * 获取任务历史列表
+     * 
+     * @param flowInstanceId 流程实例ID
+     * @return 任务历史记录列表
+     */
+    public List<TaskHistory> getTaskHistoryList(Long flowInstanceId) {
+        log.debug("查询任务历史列表，流程实例ID: {}", flowInstanceId);
+        return flowHistoryService.getTaskHistoryList(flowInstanceId);
+    }
+    
+    /**
+     * 获取活动历史列表
+     * 
+     * @param flowInstanceId 流程实例ID
+     * @return 活动历史记录列表
+     */
+    public List<ActivityHistory> getActivityHistoryList(Long flowInstanceId) {
+        log.debug("查询活动历史列表，流程实例ID: {}", flowInstanceId);
+        return flowHistoryService.getActivityHistoryList(flowInstanceId);
+    }
+    
+    /**
+     * 根据处理人查询任务历史
+     * 
+     * @param handlerId 处理人ID
+     * @return 任务历史记录列表
+     */
+    public List<TaskHistory> getTaskHistoryByHandler(Long handlerId) {
+        log.debug("根据处理人查询任务历史，处理人ID: {}", handlerId);
+        return flowHistoryService.getTaskHistoryByHandler(handlerId);
     }
 
 }

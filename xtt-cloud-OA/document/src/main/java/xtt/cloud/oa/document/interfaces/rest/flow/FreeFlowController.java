@@ -2,13 +2,12 @@ package xtt.cloud.oa.document.interfaces.rest.flow;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import xtt.cloud.oa.common.Result;
-import xtt.cloud.oa.document.application.flow.core.FreeFlowEngineService;
+import xtt.cloud.oa.document.application.flow.core.free.FreeFlowEngineService;
 import xtt.cloud.oa.document.domain.entity.flow.FlowInstance;
-import xtt.cloud.oa.document.domain.entity.flow.ApproverScope;
-import xtt.cloud.oa.document.domain.entity.flow.FlowAction;
+import xtt.cloud.oa.document.domain.entity.flow.definition.free.ApproverScope;
+import xtt.cloud.oa.document.domain.entity.flow.definition.free.FlowAction;
 import xtt.cloud.oa.document.domain.entity.flow.FlowNodeInstance;
 import xtt.cloud.oa.document.domain.mapper.flow.FlowInstanceMapper;
 import xtt.cloud.oa.document.interfaces.rest.dto.ExecuteActionRequest;

@@ -114,6 +114,9 @@ CREATE TABLE `flow_node` (
     `approver_type` INT DEFAULT NULL COMMENT '审批人类型（1:指定人员,2:指定角色,3:部门负责人,4:发起人指定）',
     `approver_value` VARCHAR(500) DEFAULT NULL COMMENT '审批人值（JSON或逗号分隔）',
     `order_num` INT NOT NULL COMMENT '节点顺序',
+    `previous_node_id` BIGINT DEFAULT NULL COMMENT '上一个节点ID（用于反向查找）',
+    `next_node_id` BIGINT DEFAULT NULL COMMENT '下一个节点ID（单个，用于串行流程）',
+    `next_node_ids` VARCHAR(1000) DEFAULT NULL COMMENT '下一个节点ID列表（JSON格式，用于并行分支）',
     `skip_condition` VARCHAR(500) DEFAULT NULL COMMENT '跳过条件（SpEL表达式）',
     `required` INT DEFAULT NULL COMMENT '是否必须（0:可跳过,1:必须）',
     `parallel_mode` INT DEFAULT NULL COMMENT '并行模式（0:串行,1:会签,2:或签）',
@@ -124,7 +127,9 @@ CREATE TABLE `flow_node` (
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_flow_def_id` (`flow_def_id`),
-    KEY `idx_order_num` (`flow_def_id`, `order_num`)
+    KEY `idx_order_num` (`flow_def_id`, `order_num`),
+    KEY `idx_previous_node_id` (`previous_node_id`),
+    KEY `idx_next_node_id` (`next_node_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='流程节点定义表-存储流程中的节点定义';
 
 -- =====================================================

@@ -90,12 +90,14 @@ import xtt.cloud.oa.document.interfaces.rest.dto.ExecuteActionRequest;
 ```
 
 ### 所有 Mapper 接口
+
 ```java
 // 更新前
+
 import xtt.cloud.oa.document.domain.entity.FlowAction;
 
 // 更新后
-import xtt.cloud.oa.document.domain.entity.flow.FlowAction;
+
 ```
 
 ---

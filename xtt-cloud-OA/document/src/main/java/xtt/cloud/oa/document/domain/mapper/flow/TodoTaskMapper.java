@@ -10,7 +10,7 @@ import xtt.cloud.oa.document.domain.entity.flow.task.TodoTask;
  * @author xtt
  * @since 2023.0.3.3
  */
-@Mapper
+//@Mapper
 public interface TodoTaskMapper extends BaseMapper<TodoTask> {
     // 待办任务数据访问接口
 }

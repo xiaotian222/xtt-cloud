@@ -10,7 +10,7 @@ import xtt.cloud.oa.document.domain.entity.flow.task.DoneTask;
  * @author xtt
  * @since 2023.0.3.3
  */
-@Mapper
+//@Mapper
 public interface DoneTaskMapper extends BaseMapper<DoneTask> {
     // 已办任务数据访问接口
 }

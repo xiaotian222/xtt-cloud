@@ -7,7 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xtt.cloud.oa.document.domain.entity.flow.Document;
+import xtt.cloud.oa.document.domain.entity.flow.definition.Document;
 import xtt.cloud.oa.document.domain.entity.flow.FlowInstance;
 import xtt.cloud.oa.document.domain.entity.flow.FlowNodeInstance;
 import xtt.cloud.oa.document.domain.entity.flow.task.DoneTask;

@@ -10,7 +10,7 @@ import xtt.cloud.oa.document.domain.entity.flow.FlowNodeInstance;
  * @author xtt
  * @since 2023.0.3.3
  */
-@Mapper
+//@Mapper
 public interface FlowNodeInstanceMapper extends BaseMapper<FlowNodeInstance> {
     // 节点实例数据访问接口
 }

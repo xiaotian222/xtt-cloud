@@ -1,8 +1,7 @@
 package xtt.cloud.oa.document.domain.mapper.flow;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.apache.ibatis.annotations.Mapper;
-import xtt.cloud.oa.document.domain.entity.flow.FlowActionRule;
+import xtt.cloud.oa.document.domain.entity.flow.definition.free.FlowActionRule;
 
 /**
  * 动作规则 Mapper
@@ -10,7 +9,7 @@ import xtt.cloud.oa.document.domain.entity.flow.FlowActionRule;
  * @author xtt
  * @since 2023.0.3.3
  */
-@Mapper
+//@Mapper
 public interface FlowActionRuleMapper extends BaseMapper<FlowActionRule> {
     // 动作规则数据访问接口
 }

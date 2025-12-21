@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import xtt.cloud.oa.common.BusinessException;
-import xtt.cloud.oa.document.domain.entity.flow.Document;
+import xtt.cloud.oa.document.domain.entity.flow.definition.Document;
 import xtt.cloud.oa.document.domain.mapper.flow.DocumentMapper;
 
 import java.time.LocalDateTime;
