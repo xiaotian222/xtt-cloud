@@ -1,4 +1,4 @@
-package xtt.cloud.oa.common.designpattern.singleton;
+package xtt.cloud.oa.common.infra.designpattern.singleton;
 
 /**
  * 作者: HuTianRui

@@ -1,6 +1,4 @@
-package xtt.cloud.oa.common.designpattern.strategy;
-
-import java.security.PublicKey;
+package xtt.cloud.oa.common.infra.designpattern.strategy;
 
 /**
  * 作者: HuTianRui

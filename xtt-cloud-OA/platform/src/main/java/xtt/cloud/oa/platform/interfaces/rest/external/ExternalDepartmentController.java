@@ -61,4 +61,15 @@ public class ExternalDepartmentController {
     public List<Department> getByIds(@RequestBody List<Long> ids) {
         return departmentService.getByIds(ids);
     }
+
+    /**
+     * 根据部门ID获取该部门下的用户ID列表
+     * 
+     * 供其他微服务调用，用于获取部门下的所有用户
+     */
+    @GetMapping("/{id}/users")
+    public ResponseEntity<List<Long>> getUserIdsByDepartmentId(@PathVariable Long id) {
+        List<Long> userIds = departmentService.getUserIdsByDepartmentId(id);
+        return ResponseEntity.ok(userIds);
+    }
 }

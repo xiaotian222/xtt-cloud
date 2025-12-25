@@ -40,13 +40,5 @@ public class FlowQueryService {
         return flowApplicationService.queryFlowInstances(query);
     }
     
-    /**
-     * 查询待办任务
-     */
-    @Transactional(readOnly = true)
-    public List<FlowInstanceDTO> queryTodoTasks(TodoTaskQuery query) {
-        // TODO: 实现待办任务查询逻辑
-        return List.of();
-    }
 }
 

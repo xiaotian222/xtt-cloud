@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import xtt.cloud.oa.workflow.domain.flow.model.valueobject.NodeStatus;
-import xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeInstanceRepository;
 import xtt.cloud.oa.workflow.domain.flow.service.ConditionEvaluationService;
 import xtt.cloud.oa.workflow.domain.flow.service.NodeRoutingService;
 
@@ -29,13 +28,13 @@ public class NodeRoutingServiceImpl implements NodeRoutingService {
     private final FlowNodeInstanceRepository flowNodeInstanceRepository;
     private final ConditionEvaluationService conditionEvaluationService;
     private final ObjectMapper objectMapper;
-    private final xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeRepository flowNodeRepository;
+    private final FlowNodeRepository flowNodeRepository;
     
     public NodeRoutingServiceImpl(
             FlowNodeInstanceRepository flowNodeInstanceRepository,
             ConditionEvaluationService conditionEvaluationService,
             ObjectMapper objectMapper,
-            xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeRepository flowNodeRepository) {
+            FlowNodeRepository flowNodeRepository) {
         this.flowNodeInstanceRepository = flowNodeInstanceRepository;
         this.conditionEvaluationService = conditionEvaluationService;
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
@@ -197,6 +196,88 @@ public class NodeRoutingServiceImpl implements NodeRoutingService {
         // 如果节点有跳过条件，评估条件表达式
         if (StringUtils.hasText(node.getSkipCondition())) {
             return conditionEvaluationService.evaluate(node.getSkipCondition(), processVariables);
+        }
+        
+        return false;
+    }
+    
+    @Override
+    public boolean canMoveToNextNode(xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode currentNodeDef, Long flowInstanceId) {
+        // 如果是并行节点，需要检查并行模式
+        if (currentNodeDef.isParallelMode()) {
+            if (currentNodeDef.isParallelAllMode()) {
+                // 会签模式：所有节点都完成
+                return allParallelNodesCompleted(currentNodeDef, flowInstanceId);
+            } else if (currentNodeDef.isParallelAnyMode()) {
+                // 或签模式：任一节点完成
+                return anyParallelNodeCompleted(currentNodeDef, flowInstanceId);
+            }
+        }
+        
+        // 串行节点：当前节点完成即可流转
+        return true;
+    }
+    
+    @Override
+    public boolean allParallelNodesCompleted(xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode node, Long flowInstanceId) {
+        List<xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance> nodeInstances = 
+                flowNodeInstanceRepository.findByNodeIdAndFlowInstanceId(node.getId(), flowInstanceId);
+        
+        if (nodeInstances.isEmpty()) {
+            return false;
+        }
+        
+        return nodeInstances.stream()
+                .allMatch(ni -> {
+                    NodeStatus status = ni.getStatus();
+                    return status != null && status.isFinished();
+                });
+    }
+    
+    @Override
+    public boolean anyParallelNodeCompleted(xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode node, Long flowInstanceId) {
+        List<xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance> nodeInstances = 
+                flowNodeInstanceRepository.findByNodeIdAndFlowInstanceId(node.getId(), flowInstanceId);
+        
+        return nodeInstances.stream()
+                .anyMatch(ni -> {
+                    NodeStatus status = ni.getStatus();
+                    return status != null && status.isFinished();
+                });
+    }
+    
+    @Override
+    public boolean canCompleteFlow(Long currentNodeId, Long flowDefId, Long flowInstanceId, 
+                                   Map<String, Object> processVariables) {
+        if (currentNodeId == null) {
+            // 没有当前节点，可以直接完成
+            return true;
+        }
+        
+        java.util.Optional<xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode> currentNodeOpt = 
+                flowNodeRepository.findById(currentNodeId);
+        if (currentNodeOpt.isPresent()) {
+            xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode currentNode = currentNodeOpt.get();
+            
+            // 检查最后一个节点的所有实例是否完成
+            if (currentNode.isParallelAllMode()) {
+                return allParallelNodesCompleted(currentNode, flowInstanceId);
+            } else {
+                // 串行或或签模式，任一完成即可
+                List<xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance> nodeInstances = 
+                        flowNodeInstanceRepository.findByNodeIdAndFlowInstanceId(currentNode.getId(), flowInstanceId);
+                if (!nodeInstances.isEmpty()) {
+                    return nodeInstances.stream()
+                            .anyMatch(ni -> {
+                                NodeStatus status = ni.getStatus();
+                                return status != null && status.isFinished();
+                            });
+                }
+            }
+        } else {
+            // 检查是否没有下一个节点
+            List<Long> nextNodeIds = getNextNodeIds(currentNodeId, flowDefId, processVariables);
+            return nextNodeIds.isEmpty();
         }
         
         return false;

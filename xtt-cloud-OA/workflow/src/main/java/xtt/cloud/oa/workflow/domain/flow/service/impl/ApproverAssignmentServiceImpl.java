@@ -4,10 +4,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode;
+import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance;
 import xtt.cloud.oa.workflow.domain.flow.model.valueobject.Approver;
 import xtt.cloud.oa.workflow.domain.flow.model.valueobject.NodeStatus;
+import xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeInstanceRepository;
+import xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeRepository;
 import xtt.cloud.oa.workflow.domain.flow.service.ApproverAssignmentService;
-import xtt.cloud.oa.workflow.infrastructure.external.PlatformUserServiceAdapter;
+import xtt.cloud.oa.workflow.domain.flow.service.ApproverProvider;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,15 +31,15 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
     
     private final FlowNodeRepository flowNodeRepository;
     private final FlowNodeInstanceRepository flowNodeInstanceRepository;
-    private final PlatformUserServiceAdapter platformUserServiceAdapter;
+    private final ApproverProvider approverProvider;
     
     public ApproverAssignmentServiceImpl(
             FlowNodeRepository flowNodeRepository,
             FlowNodeInstanceRepository flowNodeInstanceRepository,
-            PlatformUserServiceAdapter platformUserServiceAdapter) {
+            ApproverProvider approverProvider) {
         this.flowNodeRepository = flowNodeRepository;
         this.flowNodeInstanceRepository = flowNodeInstanceRepository;
-        this.platformUserServiceAdapter = platformUserServiceAdapter;
+        this.approverProvider = approverProvider;
     }
     
     @Override
@@ -44,11 +48,12 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
         List<Approver> approvers = new ArrayList<>();
         
         // 1. 获取节点定义
-        FlowNode node = flowNodeRepository.findById(nodeId);
-        if (node == null) {
+        java.util.Optional<FlowNode> nodeOpt = flowNodeRepository.findById(nodeId);
+        if (nodeOpt.isEmpty()) {
             log.warn("节点不存在，节点ID: {}", nodeId);
             return approvers;
         }
+        FlowNode node = nodeOpt.get();
         
         // 2. 获取审批人类型和值
         Integer approverType = node.getApproverType();
@@ -99,8 +104,8 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
             // 解析用户ID列表（支持逗号分隔或JSON数组）
             List<Long> userIds = parseIdList(approverValue);
             
-            // 调用平台用户服务适配器批量获取用户并转换为审批人
-            return platformUserServiceAdapter.convertToApprovers(userIds);
+            // 调用审批人提供者批量获取用户并转换为审批人
+            return approverProvider.convertToApprovers(userIds);
         } catch (Exception e) {
             log.error("根据用户ID列表分配审批人失败: {}", approverValue, e);
             return new ArrayList<>();
@@ -115,8 +120,8 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
             // 解析角色ID列表
             List<Long> roleIds = parseIdList(approverValue);
             
-            // 调用平台用户服务适配器获取角色下的所有用户（去重）
-            return platformUserServiceAdapter.getUsersByRoleIds(roleIds);
+            // 调用审批人提供者获取角色下的所有用户（去重）
+            return approverProvider.getUsersByRoleIds(roleIds);
         } catch (Exception e) {
             log.error("根据角色ID列表分配审批人失败: {}", approverValue, e);
             return new ArrayList<>();
@@ -131,8 +136,8 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
             // 解析部门ID列表
             List<Long> deptIds = parseIdList(approverValue);
             
-            // 调用平台用户服务适配器获取部门负责人（去重）
-            return platformUserServiceAdapter.getDeptLeadersByDeptIds(deptIds);
+            // 调用审批人提供者获取部门负责人（去重）
+            return approverProvider.getDeptLeadersByDeptIds(deptIds);
         } catch (Exception e) {
             log.error("根据部门ID列表分配审批人失败: {}", approverValue, e);
             return new ArrayList<>();
@@ -154,8 +159,8 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
             // 解析审批人ID列表
             List<Long> approverIds = parseIdList(approverIdsObj.toString());
             
-            // 调用平台用户服务适配器批量获取用户并转换为审批人
-            return platformUserServiceAdapter.convertToApprovers(approverIds);
+            // 调用审批人提供者批量获取用户并转换为审批人
+            return approverProvider.convertToApprovers(approverIds);
         } catch (Exception e) {
             log.error("根据发起人指定分配审批人失败，流程实例ID: {}", flowInstanceId, e);
             return new ArrayList<>();
@@ -198,8 +203,8 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
         
         try {
             // 1. 获取节点实例列表
-            List<xtt.cloud.oa.document.domain.entity.flow.FlowNodeInstance> nodeInstances = 
-                    flowNodeInstanceRepository.findByFlowInstanceIdAndNodeId(flowInstanceId, nodeId);
+            List<FlowNodeInstance> nodeInstances = 
+                    flowNodeInstanceRepository.findByNodeIdAndFlowInstanceId(nodeId, flowInstanceId);
             
             if (nodeInstances.isEmpty()) {
                 log.warn("节点实例不存在，节点ID: {}, 流程实例ID: {}", nodeId, flowInstanceId);
@@ -208,7 +213,10 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
             
             // 2. 检查用户是否在审批人列表中
             boolean isApprover = nodeInstances.stream()
-                    .anyMatch(ni -> userId.equals(ni.getApproverId()));
+                    .anyMatch(ni -> {
+                        Approver approver = ni.getApprover();
+                        return approver != null && userId.equals(approver.getUserId());
+                    });
             
             if (!isApprover) {
                 log.debug("用户不是该节点的审批人，用户ID: {}, 节点ID: {}, 流程实例ID: {}", 
@@ -219,8 +227,12 @@ public class ApproverAssignmentServiceImpl implements ApproverAssignmentService 
             // 3. 检查节点状态是否允许审批（待处理或处理中）
             boolean canApprove = nodeInstances.stream()
                     .anyMatch(ni -> {
-                        NodeStatus status = NodeStatus.fromValue(ni.getStatus());
-                        return status.canHandle() && userId.equals(ni.getApproverId());
+                        Approver approver = ni.getApprover();
+                        if (approver == null || !userId.equals(approver.getUserId())) {
+                            return false;
+                        }
+                        NodeStatus status = ni.getStatus();
+                        return status != null && status.canHandle();
                     });
             
             if (!canApprove) {

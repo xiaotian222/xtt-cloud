@@ -1,4 +1,4 @@
-package xtt.cloud.oa.common.designpattern.factorymethod;
+package xtt.cloud.oa.common.infra.designpattern.factorymethod;
 
 /**
  * 作者: HuTianRui

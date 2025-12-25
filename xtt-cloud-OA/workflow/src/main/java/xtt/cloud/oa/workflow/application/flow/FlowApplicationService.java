@@ -11,18 +11,20 @@ import xtt.cloud.oa.workflow.application.flow.query.FlowInstanceQuery;
 import xtt.cloud.oa.workflow.domain.flow.model.aggregate.FlowInstance;
 import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode;
 import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance;
-import xtt.cloud.oa.workflow.domain.flow.model.valueobject.Approver;
-import xtt.cloud.oa.workflow.domain.flow.model.valueobject.NodeStatus;
 import xtt.cloud.oa.workflow.domain.flow.repository.FlowInstanceRepository;
 import xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeInstanceRepository;
 import xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeRepository;
 import xtt.cloud.oa.workflow.domain.flow.service.NodeRoutingService;
 import xtt.cloud.oa.workflow.domain.flow.service.ApproverAssignmentService;
+import xtt.cloud.oa.workflow.infrastructure.cache.CacheUpdateService;
+import xtt.cloud.oa.workflow.infrastructure.cache.flowinstance.FlowInstanceCacheService;
+import xtt.cloud.oa.workflow.infrastructure.lock.DistributedLockService;
 import xtt.cloud.oa.workflow.infrastructure.messaging.event.DomainEventPublisher;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 流程应用服务
@@ -46,6 +48,10 @@ public class FlowApplicationService {
     private final NodeRoutingService nodeRoutingService;
     private final ApproverAssignmentService approverAssignmentService;
     private final DomainEventPublisher eventPublisher;
+    private final FlowInstanceApplicationFactory flowInstanceFactory;
+    private final CacheUpdateService cacheUpdateService;
+    private final FlowInstanceCacheService flowInstanceCacheService;
+    private final DistributedLockService distributedLockService;
     
     public FlowApplicationService(
             FlowInstanceRepository flowInstanceRepository,
@@ -53,13 +59,21 @@ public class FlowApplicationService {
             FlowNodeInstanceRepository flowNodeInstanceRepository,
             NodeRoutingService nodeRoutingService,
             ApproverAssignmentService approverAssignmentService,
-            DomainEventPublisher eventPublisher) {
+            DomainEventPublisher eventPublisher,
+            FlowInstanceApplicationFactory flowInstanceFactory,
+            CacheUpdateService cacheUpdateService,
+            FlowInstanceCacheService flowInstanceCacheService,
+            DistributedLockService distributedLockService) {
         this.flowInstanceRepository = flowInstanceRepository;
         this.flowNodeRepository = flowNodeRepository;
         this.flowNodeInstanceRepository = flowNodeInstanceRepository;
         this.nodeRoutingService = nodeRoutingService;
         this.approverAssignmentService = approverAssignmentService;
         this.eventPublisher = eventPublisher;
+        this.flowInstanceFactory = flowInstanceFactory;
+        this.cacheUpdateService = cacheUpdateService;
+        this.flowInstanceCacheService = flowInstanceCacheService;
+        this.distributedLockService = distributedLockService;
     }
     
     /**
@@ -69,36 +83,17 @@ public class FlowApplicationService {
     public FlowInstanceDTO startFlow(StartFlowCommand command) {
         log.info("启动流程，文档ID: {}, 流程定义ID: {}", command.getDocumentId(), command.getFlowDefId());
         
-        // 1. 创建流程实例聚合根
-        FlowInstance flowInstance = FlowInstance.create(
-                command.getDocumentId(),
-                command.getFlowDefId(),
-                command.getFlowType(),
-                command.getFlowMode(),
-                command.toProcessVariables()
-        );
+        // 使用工厂创建并组装流程实例
+        FlowInstance flowInstance = flowInstanceFactory.createAndAssemble(command);
         
-        // 2. 启动流程
-        flowInstance.start();
-        
-        // 3. 保存聚合根
-        flowInstance = flowInstanceRepository.save(flowInstance);
-        
-        // 4. 获取第一个节点并创建节点实例
-        FlowNode firstNode = getFirstNode(command.getFlowDefId());
-        if (firstNode != null) {
-            createAndAssignNodeInstances(flowInstance, firstNode);
-            flowInstance.moveToNode(firstNode.getId());
-        }
-        
-        // 5. 保存聚合根
-        flowInstance = flowInstanceRepository.save(flowInstance);
-        
-        // 6. 发布领域事件
+        // 发布领域事件
         publishDomainEvents(flowInstance);
         
-        // 7. 转换为DTO返回
-        return FlowInstanceAssembler.toDTO(flowInstance);
+        // 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
+        
+        return dto;
     }
     
     /**
@@ -110,39 +105,46 @@ public class FlowApplicationService {
                 command.getFlowInstanceId(), command.getNodeInstanceId(), command.getApproverId());
         
         // 1. 加载流程实例聚合根
-        FlowInstance flowInstance = loadFlowInstance(command.getFlowInstanceId());
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(command.getFlowInstanceId());
         
         // 2. 验证流程状态
         if (!flowInstance.getStatus().canProceed()) {
             throw new IllegalStateException("流程状态不允许审批，当前状态: " + flowInstance.getStatus());
         }
-        
-        // 3. 查找节点实例
-        FlowNodeInstance nodeInstance = findNodeInstance(command.getNodeInstanceId());
-        if (nodeInstance == null) {
-            throw new IllegalArgumentException("节点实例不存在: " + command.getNodeInstanceId());
-        }
-        
+
+        // 3. 获取当前节点实例
+        FlowNodeInstance nodeInstance = findNodeInstance(command.getNodeInstanceId())
+                .orElseThrow(() -> new IllegalArgumentException("节点实例不存在: " + command.getNodeInstanceId()));
+
         // 4. 验证审批权限
         if (!approverAssignmentService.hasApprovalPermission(
                 command.getApproverId(), nodeInstance.getNodeId(), command.getFlowInstanceId())) {
             throw new SecurityException("无权审批此节点");
         }
-        
+
         // 5. 完成节点实例
         nodeInstance.setStatus(FlowNodeInstance.STATUS_COMPLETED);
         nodeInstance.setComments(command.getComments());
         nodeInstance.setHandledAt(java.time.LocalDateTime.now());
         nodeInstance.setUpdatedAt(java.time.LocalDateTime.now());
-        flowNodeInstanceRepository.update(nodeInstance);
-        
+        flowNodeInstanceRepository.save(nodeInstance);
+
         // 6. 检查是否可以流转到下一个节点
-        FlowNode currentNodeDef = flowNodeRepository.findById(nodeInstance.getNodeId());
-        if (canMoveToNextNode(flowInstance, currentNodeDef, nodeInstance)) {
+        FlowNode currentNodeDef = flowNodeRepository.findById(nodeInstance.getNodeId())
+                .orElseThrow(() -> new IllegalArgumentException("节点不存在: " + nodeInstance.getNodeId()));
+        Long flowInstanceId = flowInstance.getId() != null ? flowInstance.getId().getValue() : null;
+        if (nodeRoutingService.canMoveToNextNode(currentNodeDef, flowInstanceId)) {
             moveToNextNode(flowInstance, currentNodeDef, nodeInstance);
         } else {
             // 检查流程是否完成
-            checkAndCompleteFlow(flowInstance);
+            Map<String, Object> processVariables = flowInstance.getProcessVariables().getAllVariables();
+            if (nodeRoutingService.canCompleteFlow(
+                    flowInstance.getCurrentNodeId(),
+                    flowInstance.getFlowDefId(),
+                    flowInstanceId,
+                    processVariables)) {
+                flowInstance.complete();
+            }
         }
         
         // 7. 保存聚合根
@@ -161,7 +163,7 @@ public class FlowApplicationService {
                 command.getFlowInstanceId(), command.getNodeInstanceId(), command.getApproverId());
         
         // 1. 加载流程实例聚合根
-        FlowInstance flowInstance = loadFlowInstance(command.getFlowInstanceId());
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(command.getFlowInstanceId());
         
         // 2. 验证流程状态
         if (!flowInstance.getStatus().canProceed()) {
@@ -169,10 +171,8 @@ public class FlowApplicationService {
         }
         
         // 3. 查找节点实例
-        FlowNodeInstance nodeInstance = findNodeInstance(command.getNodeInstanceId());
-        if (nodeInstance == null) {
-            throw new IllegalArgumentException("节点实例不存在: " + command.getNodeInstanceId());
-        }
+        FlowNodeInstance nodeInstance = findNodeInstance(command.getNodeInstanceId())
+                .orElseThrow(() -> new IllegalArgumentException("节点实例不存在: " + command.getNodeInstanceId()));
         
         // 4. 验证审批权限
         if (!approverAssignmentService.hasApprovalPermission(
@@ -185,7 +185,7 @@ public class FlowApplicationService {
         nodeInstance.setComments(command.getComments());
         nodeInstance.setHandledAt(java.time.LocalDateTime.now());
         nodeInstance.setUpdatedAt(java.time.LocalDateTime.now());
-        flowNodeInstanceRepository.update(nodeInstance);
+        flowNodeInstanceRepository.save(nodeInstance);
         
         // 6. 如果指定了回退节点，执行回退
         if (command.hasRollback()) {
@@ -200,6 +200,10 @@ public class FlowApplicationService {
         
         // 8. 发布领域事件
         publishDomainEvents(flowInstance);
+        
+        // 9. 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
     }
     
     /**
@@ -211,7 +215,7 @@ public class FlowApplicationService {
                 command.getFlowInstanceId(), command.getInitiatorId());
         
         // 1. 加载流程实例聚合根
-        FlowInstance flowInstance = loadFlowInstance(command.getFlowInstanceId());
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(command.getFlowInstanceId());
         
         // 2. 验证权限（只有发起人可以撤回）
         // TODO: 实现权限验证，需要从流程变量或文档中获取发起人ID
@@ -232,6 +236,10 @@ public class FlowApplicationService {
         
         // 6. 发布领域事件
         publishDomainEvents(flowInstance);
+        
+        // 7. 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
     }
     
     /**
@@ -243,7 +251,7 @@ public class FlowApplicationService {
                 command.getFlowInstanceId(), command.getTargetNodeId(), command.getApproverId());
         
         // 1. 加载流程实例聚合根
-        FlowInstance flowInstance = loadFlowInstance(command.getFlowInstanceId());
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(command.getFlowInstanceId());
         
         // 2. 验证权限
         // TODO: 实现权限验证
@@ -256,6 +264,10 @@ public class FlowApplicationService {
         
         // 5. 发布领域事件
         publishDomainEvents(flowInstance);
+        
+        // 6. 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
     }
     
     /**
@@ -263,10 +275,14 @@ public class FlowApplicationService {
      */
     @Transactional
     public void suspend(Long flowInstanceId) {
-        FlowInstance flowInstance = loadFlowInstance(flowInstanceId);
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(flowInstanceId);
         flowInstance.suspend();
         flowInstanceRepository.save(flowInstance);
         publishDomainEvents(flowInstance);
+        
+        // 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
     }
     
     /**
@@ -274,21 +290,68 @@ public class FlowApplicationService {
      */
     @Transactional
     public void resume(Long flowInstanceId) {
-        FlowInstance flowInstance = loadFlowInstance(flowInstanceId);
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(flowInstanceId);
         flowInstance.resume();
         flowInstanceRepository.save(flowInstance);
         publishDomainEvents(flowInstance);
+        
+        // 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
     }
-    
+
+    // ===================流程对象获取方法==========================
+
     /**
      * 查询流程实例
+     * 
+     * 使用分布式锁防止缓存击穿：当缓存未命中时，只有一个线程查询数据库并更新缓存
+     * 高并发情况下才会出现，
+     *
      */
     @Transactional(readOnly = true)
     public FlowInstanceDTO getFlowInstance(Long flowInstanceId) {
-        FlowInstance flowInstance = loadFlowInstance(flowInstanceId);
-        return FlowInstanceAssembler.toDTO(flowInstance);
+        // 1. 先从缓存获取
+        Optional<FlowInstanceDTO> cached = flowInstanceCacheService.getFlowInstanceById(flowInstanceId);
+        if (cached.isPresent()) {
+            return cached.get();
+        }
+        
+        // 2. 缓存未命中，使用分布式锁防止缓存击穿
+        String lockKey = "flow_instance:" + flowInstanceId;
+        FlowInstanceDTO result = distributedLockService.executeWithLock(
+            lockKey,
+            3, // 等待3秒
+            10, // 锁持有10秒
+            TimeUnit.SECONDS,
+            () -> {
+                // 双重检查：再次检查缓存（可能在等待锁期间，其他线程已经更新了缓存）
+                Optional<FlowInstanceDTO> cachedAgain = flowInstanceCacheService.getFlowInstanceById(flowInstanceId);
+                if (cachedAgain.isPresent()) {
+                    return cachedAgain.get();
+                }
+                
+                // 从数据库加载
+                FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(flowInstanceId);
+                FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+                
+                // 更新缓存
+                cacheUpdateService.updateFlowInstanceCache(dto);
+                
+                return dto;
+            }
+        );
+        
+        // 如果获取锁失败，直接查数据库（降级策略）
+        if (result == null) {
+            log.warn("获取分布式锁失败，直接查询数据库，流程实例ID: {}", flowInstanceId);
+            FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(flowInstanceId);
+            return FlowInstanceAssembler.toDTO(flowInstance);
+        }
+        
+        return result;
     }
-    
+
     /**
      * 查询流程实例列表
      */
@@ -302,15 +365,19 @@ public class FlowApplicationService {
         //         .collect(Collectors.toList());
         return List.of();
     }
-    
+
     /**
      * 设置流程变量
      */
     @Transactional
     public void setProcessVariable(Long flowInstanceId, String key, Object value) {
-        FlowInstance flowInstance = loadFlowInstance(flowInstanceId);
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(flowInstanceId);
         flowInstance.setProcessVariable(key, value);
         flowInstanceRepository.save(flowInstance);
+        
+        // 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
     }
     
     /**
@@ -318,23 +385,35 @@ public class FlowApplicationService {
      */
     @Transactional(readOnly = true)
     public Object getProcessVariable(Long flowInstanceId, String key) {
-        FlowInstance flowInstance = loadFlowInstance(flowInstanceId);
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(flowInstanceId);
         return flowInstance.getProcessVariable(key);
     }
     
     // ========== 私有方法 ==========
     
+
     /**
-     * 加载流程实例（如果不存在则抛出异常）
+     * 加载流程实例的所有节点实例
      */
-    private FlowInstance loadFlowInstance(Long flowInstanceId) {
-        Optional<FlowInstance> optional = flowInstanceRepository.findById(flowInstanceId);
-        if (optional.isEmpty()) {
-            throw new IllegalArgumentException("Flow instance not found: " + flowInstanceId);
+    private FlowInstance loadFlowNodeInstances(FlowInstance flowInstance) {
+        if (flowInstance == null || flowInstance.getId() == null) {
+            return flowInstance;
         }
-        return optional.get();
+        
+        List<FlowNodeInstance> nodeInstances = flowNodeInstanceRepository.findByFlowInstanceId(
+                flowInstance.getId().getValue());
+        flowInstance.setNodeInstances(nodeInstances);
+        
+        return flowInstance;
     }
-    
+
+    /**
+     * 查找节点实例
+     */
+    private Optional<FlowNodeInstance> findNodeInstance(Long nodeInstanceId) {
+        return flowNodeInstanceRepository.findById(nodeInstanceId);
+    }
+
     /**
      * 发布领域事件
      */
@@ -344,123 +423,7 @@ public class FlowApplicationService {
             eventPublisher.publishAll(events);
         }
     }
-    
-    /**
-     * 获取第一个节点
-     */
-    private FlowNode getFirstNode(Long flowDefId) {
-        List<FlowNode> nodes = flowNodeRepository.findByFlowDefId(flowDefId);
-        if (nodes.isEmpty()) {
-            throw new IllegalArgumentException("流程定义没有配置节点，流程定义ID: " + flowDefId);
-        }
-        // 按 orderNum 排序，取第一个
-        return nodes.stream()
-                .sorted((a, b) -> {
-                    Integer orderA = a.getOrderNum() != null ? a.getOrderNum() : Integer.MAX_VALUE;
-                    Integer orderB = b.getOrderNum() != null ? b.getOrderNum() : Integer.MAX_VALUE;
-                    return orderA.compareTo(orderB);
-                })
-                .findFirst()
-                .orElse(nodes.get(0));
-    }
-    
-    /**
-     * 创建并分配节点实例
-     */
-    private void createAndAssignNodeInstances(FlowInstance flowInstance, FlowNode node) {
-        // 1. 分配审批人
-        Map<String, Object> processVariables = flowInstance.getProcessVariables().getAllVariables();
-        List<Approver> approvers = approverAssignmentService.assignApprovers(
-                node.getId(), 
-                flowInstance.getFlowDefId(), 
-                flowInstance.getId() != null ? flowInstance.getId().getValue() : null,
-                processVariables);
-        
-        if (approvers.isEmpty()) {
-            throw new IllegalStateException("节点 " + node.getNodeName() + " 无法分配审批人");
-        }
-        
-        // 2. 为每个审批人创建节点实例
-        for (Approver approver : approvers) {
-            // 创建持久化层的节点实例（PO）
-            FlowNodeInstance nodeInstance = new FlowNodeInstance();
-            nodeInstance.setFlowInstanceId(flowInstance.getId() != null ? flowInstance.getId().getValue() : null);
-            nodeInstance.setNodeId(node.getId());
-            nodeInstance.setApproverId(approver.getUserId());
-            nodeInstance.setApproverDeptId(approver.getDeptId());
-            nodeInstance.setStatus(FlowNodeInstance.STATUS_PENDING);
-            nodeInstance.setCreatedAt(java.time.LocalDateTime.now());
-            nodeInstance.setUpdatedAt(java.time.LocalDateTime.now());
-            
-            // 保存节点实例
-            flowNodeInstanceRepository.save(nodeInstance);
-            
-            // TODO: 生成待办任务
-            // taskService.createTodoTask(nodeInstance, approver.getUserId(), flowInstance, document);
-        }
-        
-        log.info("节点实例创建成功，节点名称: {}, 创建了 {} 个实例", node.getNodeName(), approvers.size());
-    }
-    
-    /**
-     * 查找节点实例
-     */
-    private FlowNodeInstance findNodeInstance(Long nodeInstanceId) {
-        return flowNodeInstanceRepository.findById(nodeInstanceId);
-    }
-    
-    /**
-     * 判断是否可以流转到下一个节点
-     */
-    private boolean canMoveToNextNode(FlowInstance flowInstance, FlowNode currentNodeDef, FlowNodeInstance currentNode) {
-        // 如果是并行节点，需要检查并行模式
-        if (currentNodeDef.isParallelMode()) {
-            if (currentNodeDef.isParallelAllMode()) {
-                // 会签模式：所有节点都完成
-                return allParallelNodesCompleted(flowInstance, currentNodeDef);
-            } else if (currentNodeDef.isParallelAnyMode()) {
-                // 或签模式：任一节点完成
-                return anyParallelNodeCompleted(flowInstance, currentNodeDef);
-            }
-        }
-        
-        // 串行节点：当前节点完成即可流转
-        return true;
-    }
-    
-    /**
-     * 检查并行节点是否全部完成（会签模式）
-     */
-    private boolean allParallelNodesCompleted(FlowInstance flowInstance, FlowNode node) {
-        List<FlowNodeInstance> nodeInstances = flowNodeInstanceRepository.findByFlowInstanceIdAndNodeId(
-                flowInstance.getId() != null ? flowInstance.getId().getValue() : null, 
-                node.getId());
-        
-        if (nodeInstances.isEmpty()) {
-            return false;
-        }
-        
-        return nodeInstances.stream()
-                .allMatch(ni -> {
-                    NodeStatus status = NodeStatus.fromValue(ni.getStatus());
-                    return status.isFinished();
-                });
-    }
-    
-    /**
-     * 检查并行节点是否任一完成（或签模式）
-     */
-    private boolean anyParallelNodeCompleted(FlowInstance flowInstance, FlowNode node) {
-        List<FlowNodeInstance> nodeInstances = flowNodeInstanceRepository.findByFlowInstanceIdAndNodeId(
-                flowInstance.getId() != null ? flowInstance.getId().getValue() : null, 
-                node.getId());
-        
-        return nodeInstances.stream()
-                .anyMatch(ni -> {
-                    NodeStatus status = NodeStatus.fromValue(ni.getStatus());
-                    return status.isFinished();
-                });
-    }
+
     
     /**
      * 流转到下一个节点
@@ -494,11 +457,12 @@ public class FlowApplicationService {
             }
             
             // 3. 获取节点定义
-            FlowNode nextNode = flowNodeRepository.findById(nextNodeId);
-            if (nextNode == null) {
+            Optional<FlowNode> nextNodeOpt = flowNodeRepository.findById(nextNodeId);
+            if (nextNodeOpt.isEmpty()) {
                 log.warn("下一个节点不存在，节点ID: {}", nextNodeId);
                 continue;
             }
+            FlowNode nextNode = nextNodeOpt.get();
             
             // 4. 检查是否应该跳过节点
             if (nodeRoutingService.shouldSkipNode(nextNodeId, flowInstance.getFlowDefId(), processVariables)) {
@@ -510,7 +474,7 @@ public class FlowApplicationService {
             }
             
             // 5. 创建节点实例并分配审批人
-            createAndAssignNodeInstances(flowInstance, nextNode);
+            flowInstanceFactory.createAndAssignNodeInstances(flowInstance, nextNode);
         }
         
         // 6. 更新当前节点（如果有下一个节点，更新为第一个）
@@ -523,59 +487,20 @@ public class FlowApplicationService {
      * 创建已跳过的节点实例
      */
     private void createSkippedNodeInstance(FlowInstance flowInstance, FlowNode node) {
-        FlowNodeInstance nodeInstance = new FlowNodeInstance();
-        nodeInstance.setFlowInstanceId(flowInstance.getId() != null ? flowInstance.getId().getValue() : null);
-        nodeInstance.setNodeId(node.getId());
-        nodeInstance.setStatus(FlowNodeInstance.STATUS_SKIPPED);
-        nodeInstance.setComments("节点已跳过（满足跳过条件）");
-        nodeInstance.setHandledAt(java.time.LocalDateTime.now());
-        nodeInstance.setCreatedAt(java.time.LocalDateTime.now());
-        nodeInstance.setUpdatedAt(java.time.LocalDateTime.now());
+        // 创建跳过状态的节点实例（不需要审批人）
+        FlowNodeInstance nodeInstance = FlowNodeInstance.create(
+                flowInstance.getId() != null ? flowInstance.getId().getValue() : null,
+                node.getId(),
+                null  // 跳过节点不需要审批人
+        );
+        // 设置为跳过状态
+        nodeInstance.skip("节点已跳过（满足跳过条件）");
         
         flowNodeInstanceRepository.save(nodeInstance);
         
         log.info("节点已跳过，节点名称: {}, 节点ID: {}", node.getNodeName(), node.getId());
     }
     
-    /**
-     * 检查并完成流程
-     */
-    private void checkAndCompleteFlow(FlowInstance flowInstance) {
-        FlowNode currentNode = flowNodeRepository.findById(flowInstance.getCurrentNodeId());
-        if (currentNode != null && currentNode.getIsLastNode() != null && currentNode.getIsLastNode() == 1) {
-            // 检查最后一个节点的所有实例是否完成
-            if (currentNode.isParallelAllMode()) {
-                if (allParallelNodesCompleted(flowInstance, currentNode)) {
-                    flowInstance.complete();
-                }
-            } else {
-                // 串行或或签模式，任一完成即可
-                List<FlowNodeInstance> nodeInstances = flowNodeInstanceRepository.findByFlowInstanceIdAndNodeId(
-                        flowInstance.getId() != null ? flowInstance.getId().getValue() : null, 
-                        currentNode.getId());
-                if (!nodeInstances.isEmpty()) {
-                    boolean hasCompleted = nodeInstances.stream()
-                            .anyMatch(ni -> {
-                                NodeStatus status = NodeStatus.fromValue(ni.getStatus());
-                                return status.isFinished();
-                            });
-                    if (hasCompleted) {
-                        flowInstance.complete();
-                    }
-                }
-            }
-        } else {
-            // 检查是否没有下一个节点
-            Map<String, Object> processVariables = flowInstance.getProcessVariables().getAllVariables();
-            List<Long> nextNodeIds = nodeRoutingService.getNextNodeIds(
-                    flowInstance.getCurrentNodeId(), 
-                    flowInstance.getFlowDefId(), 
-                    processVariables);
-            if (nextNodeIds.isEmpty()) {
-                flowInstance.complete();
-            }
-        }
-    }
     
     /**
      * 回退到指定节点
@@ -586,10 +511,8 @@ public class FlowApplicationService {
                 targetNodeId, operatorId);
         
         // 1. 验证目标节点是否存在
-        FlowNode targetNode = flowNodeRepository.findById(targetNodeId);
-        if (targetNode == null) {
-            throw new IllegalArgumentException("目标节点不存在: " + targetNodeId);
-        }
+        FlowNode targetNode = flowNodeRepository.findById(targetNodeId)
+                .orElseThrow(() -> new IllegalArgumentException("目标节点不存在: " + targetNodeId));
         
         // 2. 验证目标节点是否属于当前流程定义
         if (!targetNode.getFlowDefId().equals(flowInstance.getFlowDefId())) {
@@ -603,7 +526,7 @@ public class FlowApplicationService {
         flowInstance.moveToNode(targetNodeId);
         
         // 5. 创建目标节点的节点实例
-        createAndAssignNodeInstances(flowInstance, targetNode);
+        flowInstanceFactory.createAndAssignNodeInstances(flowInstance, targetNode);
         
         log.info("回退成功，流程实例ID: {}, 目标节点ID: {}", 
                 flowInstance.getId() != null ? flowInstance.getId().getValue() : null, 

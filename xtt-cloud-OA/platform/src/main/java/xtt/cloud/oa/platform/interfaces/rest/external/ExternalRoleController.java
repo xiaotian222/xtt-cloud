@@ -136,4 +136,15 @@ public class ExternalRoleController {
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(roles);
     }
+
+    /**
+     * 根据角色ID获取该角色下的用户ID列表
+     * 
+     * 供其他微服务调用，用于获取角色下的所有用户
+     */
+    @GetMapping("/{id}/users")
+    public ResponseEntity<List<Long>> getUserIdsByRoleId(@PathVariable Long id) {
+        List<Long> userIds = roleService.getUserIdsByRoleId(id);
+        return ResponseEntity.ok(userIds);
+    }
 }

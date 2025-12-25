@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xtt.cloud.oa.platform.domain.entity.Department;
 import xtt.cloud.oa.platform.domain.mapper.DepartmentMapper;
+import xtt.cloud.oa.platform.domain.mapper.UserDepartmentMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,9 +13,11 @@ import java.util.Optional;
 @Service
 public class DepartmentService {
     private final DepartmentMapper departmentMapper;
+    private final UserDepartmentMapper userDepartmentMapper;
     
-    public DepartmentService(DepartmentMapper departmentMapper) {
+    public DepartmentService(DepartmentMapper departmentMapper, UserDepartmentMapper userDepartmentMapper) {
         this.departmentMapper = departmentMapper;
+        this.userDepartmentMapper = userDepartmentMapper;
     }
 
     /**
@@ -93,5 +96,12 @@ public class DepartmentService {
                     }
                 })
                 .toList();
+    }
+
+    /**
+     * 根据部门ID获取该部门下的用户ID列表
+     */
+    public List<Long> getUserIdsByDepartmentId(Long departmentId) {
+        return userDepartmentMapper.selectUserIdsByDepartmentId(departmentId);
     }
 }

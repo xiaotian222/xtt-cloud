@@ -19,6 +19,7 @@
         <module>xtt-alibaba-nacos-config</module>
         <module>xtt-cloud-starter-nacos-config</module>
         <module>xtt-cloud-starter-nacos-discovery</module>
+        <module>xtt-cloud-starter-redis</module>
         <module>xtt-cloud-starter-seata</module>
         <module>xtt-cloud-starter-stream-rocketmq</module>
         <module>xtt-cloud-starter-bus-rocketmq</module>

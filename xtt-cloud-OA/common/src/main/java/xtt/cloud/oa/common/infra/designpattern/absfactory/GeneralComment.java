@@ -1,4 +1,4 @@
-package xtt.cloud.oa.common.designpattern.absfactory;
+package xtt.cloud.oa.common.infra.designpattern.absfactory;
 
 /**
  * 作者: HuTianRui
@@ -6,9 +6,9 @@ package xtt.cloud.oa.common.designpattern.absfactory;
  * 描述: 这里是对代码的描述
  */
 
-public class LeaderComment implements Comment {
+public class GeneralComment implements Comment {
     @Override
     public String getComment() {
-        return "领导意见";
+        return "一般意见";
     }
 }

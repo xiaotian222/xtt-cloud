@@ -1,4 +1,4 @@
-package xtt.cloud.oa.common.designpattern.absfactory;
+package xtt.cloud.oa.common.infra.designpattern.absfactory;
 
 /**
  * 作者: HuTianRui

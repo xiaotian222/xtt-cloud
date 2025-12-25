@@ -9,6 +9,12 @@ package xtt.cloud.oa.workflow.domain.flow.model.entity;
  */
 public class FlowNode {
     
+    // 审批人类型常量（委托给 PO）
+    public static final int APPROVER_TYPE_USER = xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowNode.APPROVER_TYPE_USER;
+    public static final int APPROVER_TYPE_ROLE = xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowNode.APPROVER_TYPE_ROLE;
+    public static final int APPROVER_TYPE_DEPT_LEADER = xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowNode.APPROVER_TYPE_DEPT_LEADER;
+    public static final int APPROVER_TYPE_INITIATOR = xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowNode.APPROVER_TYPE_INITIATOR;
+    
     private final xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowNode po;
     
     public FlowNode(xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowNode po) {

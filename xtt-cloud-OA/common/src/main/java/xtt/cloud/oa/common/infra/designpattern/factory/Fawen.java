@@ -1,4 +1,4 @@
-package xtt.cloud.oa.common.designpattern.absfactory;
+package xtt.cloud.oa.common.infra.designpattern.factory;
 
 /**
  * 作者: HuTianRui
@@ -6,10 +6,10 @@ package xtt.cloud.oa.common.designpattern.absfactory;
  * 描述: 这里是对代码的描述
  */
 
-public class Shouwen implements Document {
+public class Fawen implements Document {
 
     @Override
     public String getDocument() {
-        return "收文";
+        return "发文";
     }
 }

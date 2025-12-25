@@ -7,6 +7,7 @@ import xtt.cloud.oa.platform.domain.entity.Role;
 import xtt.cloud.oa.platform.domain.mapper.PermissionMapper;
 import xtt.cloud.oa.platform.domain.mapper.RoleMapper;
 import xtt.cloud.oa.platform.domain.mapper.RolePermissionMapper;
+import xtt.cloud.oa.platform.domain.mapper.UserRoleMapper;
 import xtt.cloud.oa.platform.infrastructure.cache.PermissionCache;
 
 import java.time.LocalDateTime;
@@ -19,13 +20,16 @@ public class RoleService {
     private final RoleMapper roleMapper;
     private final PermissionMapper permissionMapper;
     private final RolePermissionMapper rolePermissionMapper;
+    private final UserRoleMapper userRoleMapper;
     private final PermissionCache permissionCache;
     
     public RoleService(RoleMapper roleMapper, PermissionMapper permissionMapper, 
-                      RolePermissionMapper rolePermissionMapper, PermissionCache permissionCache) {
+                      RolePermissionMapper rolePermissionMapper, UserRoleMapper userRoleMapper,
+                      PermissionCache permissionCache) {
         this.roleMapper = roleMapper;
         this.permissionMapper = permissionMapper;
         this.rolePermissionMapper = rolePermissionMapper;
+        this.userRoleMapper = userRoleMapper;
         this.permissionCache = permissionCache;
     }
 
@@ -93,6 +97,13 @@ public class RoleService {
 
     public List<Role> findByCodes(List<String> codes) {
         return roleMapper.selectByCodes(codes);
+    }
+
+    /**
+     * 根据角色ID获取该角色下的用户ID列表
+     */
+    public List<Long> getUserIdsByRoleId(Long roleId) {
+        return userRoleMapper.selectUserIdsByRoleId(roleId);
     }
 }
 
