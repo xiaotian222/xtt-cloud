@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.flow.FlowNodeMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.flow.definition.FlowNode">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="flow_def_id" property="flowDefId" jdbcType="BIGINT"/>
+        <result column="node_name" property="nodeName" jdbcType="VARCHAR"/>
+        <result column="node_type" property="nodeType" jdbcType="INTEGER"/>
+        <result column="approver_type" property="approverType" jdbcType="INTEGER"/>
+        <result column="approver_value" property="approverValue" jdbcType="VARCHAR"/>
+        <result column="order_num" property="orderNum" jdbcType="INTEGER"/>
+        <result column="previous_node_id" property="previousNodeId" jdbcType="BIGINT"/>
+        <result column="next_node_id" property="nextNodeId" jdbcType="BIGINT"/>
+        <result column="next_node_ids" property="nextNodeIds" jdbcType="VARCHAR"/>
+        <result column="skip_condition" property="skipCondition" jdbcType="VARCHAR"/>
+        <result column="required" property="required" jdbcType="INTEGER"/>
+        <result column="parallel_mode" property="parallelMode" jdbcType="INTEGER"/>
+        <result column="is_free_flow" property="isFreeFlow" jdbcType="INTEGER"/>
+        <result column="allow_free_flow" property="allowFreeFlow" jdbcType="INTEGER"/>
+        <result column="is_last_node" property="isLastNode" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, flow_def_id, node_name, node_type, approver_type, approver_value, order_num,
+        previous_node_id, next_node_id, next_node_ids, skip_condition, required, parallel_mode,
+        is_free_flow, allow_free_flow, is_last_node, created_at, updated_at
+    </sql>
+
+</mapper>
+

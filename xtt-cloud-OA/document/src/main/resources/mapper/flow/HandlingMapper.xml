@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.flow.HandlingMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.flow.Handling">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="flow_instance_id" property="flowInstanceId" jdbcType="BIGINT"/>
+        <result column="node_instance_id" property="nodeInstanceId" jdbcType="BIGINT"/>
+        <result column="handler_id" property="handlerId" jdbcType="BIGINT"/>
+        <result column="handler_dept_id" property="handlerDeptId" jdbcType="BIGINT"/>
+        <result column="handling_content" property="handlingContent" jdbcType="VARCHAR"/>
+        <result column="handling_result" property="handlingResult" jdbcType="VARCHAR"/>
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP"/>
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, flow_instance_id, node_instance_id, handler_id, handler_dept_id, handling_content,
+        handling_result, start_time, end_time, status, created_at, updated_at
+    </sql>
+
+</mapper>
+

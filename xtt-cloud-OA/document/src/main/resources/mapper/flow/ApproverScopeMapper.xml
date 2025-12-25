@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.flow.ApproverScopeMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.flow.definition.free.ApproverScope">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="action_id" property="actionId" jdbcType="BIGINT"/>
+        <result column="scope_type" property="scopeType" jdbcType="INTEGER"/>
+        <result column="dept_ids" property="deptIds" jdbcType="VARCHAR"/>
+        <result column="user_ids" property="userIds" jdbcType="VARCHAR"/>
+        <result column="role_codes" property="roleCodes" jdbcType="VARCHAR"/>
+        <result column="allow_custom" property="allowCustom" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, action_id, scope_type, dept_ids, user_ids, role_codes, allow_custom, created_at, updated_at
+    </sql>
+
+</mapper>
+

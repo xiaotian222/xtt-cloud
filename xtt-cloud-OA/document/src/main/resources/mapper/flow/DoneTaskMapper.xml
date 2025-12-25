@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.flow.DoneTaskMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.flow.task.DoneTask">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="document_id" property="documentId" jdbcType="BIGINT"/>
+        <result column="flow_instance_id" property="flowInstanceId" jdbcType="BIGINT"/>
+        <result column="node_instance_id" property="nodeInstanceId" jdbcType="BIGINT"/>
+        <result column="handler_id" property="handlerId" jdbcType="BIGINT"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="task_type" property="taskType" jdbcType="INTEGER"/>
+        <result column="action" property="action" jdbcType="VARCHAR"/>
+        <result column="comments" property="comments" jdbcType="VARCHAR"/>
+        <result column="handled_at" property="handledAt" jdbcType="TIMESTAMP"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, document_id, flow_instance_id, node_instance_id, handler_id, title, task_type,
+        action, comments, handled_at, created_at
+    </sql>
+
+</mapper>
+

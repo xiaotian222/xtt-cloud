@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.gw.ReceiptInfoMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.gw.ReceiptInfo">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="document_id" property="documentId" jdbcType="BIGINT"/>
+        <result column="receive_date" property="receiveDate" jdbcType="TIMESTAMP"/>
+        <result column="sender_unit" property="senderUnit" jdbcType="VARCHAR"/>
+        <result column="document_number" property="documentNumber" jdbcType="VARCHAR"/>
+        <result column="receive_method" property="receiveMethod" jdbcType="INTEGER"/>
+        <result column="attachments" property="attachments" jdbcType="VARCHAR"/>
+        <result column="keywords" property="keywords" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, document_id, receive_date, sender_unit, document_number, receive_method,
+        attachments, keywords, created_at, updated_at
+    </sql>
+
+</mapper>
+

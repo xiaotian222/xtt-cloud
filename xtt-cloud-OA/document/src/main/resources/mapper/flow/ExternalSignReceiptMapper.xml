@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.flow.ExternalSignReceiptMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.flow.ExternalSignReceipt">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="flow_instance_id" property="flowInstanceId" jdbcType="BIGINT"/>
+        <result column="external_unit_id" property="externalUnitId" jdbcType="BIGINT"/>
+        <result column="receiver_name" property="receiverName" jdbcType="VARCHAR"/>
+        <result column="receipt_time" property="receiptTime" jdbcType="TIMESTAMP"/>
+        <result column="receipt_status" property="receiptStatus" jdbcType="INTEGER"/>
+        <result column="remarks" property="remarks" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, flow_instance_id, external_unit_id, receiver_name, receipt_time, receipt_status,
+        remarks, created_at, updated_at
+    </sql>
+
+</mapper>
+

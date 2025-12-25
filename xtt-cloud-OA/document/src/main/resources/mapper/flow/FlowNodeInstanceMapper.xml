@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.flow.FlowNodeInstanceMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.flow.FlowNodeInstance">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="flow_instance_id" property="flowInstanceId" jdbcType="BIGINT"/>
+        <result column="node_id" property="nodeId" jdbcType="BIGINT"/>
+        <result column="approver_id" property="approverId" jdbcType="BIGINT"/>
+        <result column="approver_dept_id" property="approverDeptId" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="comments" property="comments" jdbcType="VARCHAR"/>
+        <result column="handled_at" property="handledAt" jdbcType="TIMESTAMP"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, flow_instance_id, node_id, approver_id, approver_dept_id, status, comments,
+        handled_at, created_at, updated_at
+    </sql>
+
+</mapper>
+

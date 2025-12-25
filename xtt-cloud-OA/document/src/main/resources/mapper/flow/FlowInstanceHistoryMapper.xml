@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.flow.FlowInstanceHistoryMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.flow.history.FlowInstanceHistory">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="flow_instance_id" property="flowInstanceId" jdbcType="BIGINT"/>
+        <result column="document_id" property="documentId" jdbcType="BIGINT"/>
+        <result column="flow_def_id" property="flowDefId" jdbcType="BIGINT"/>
+        <result column="flow_def_name" property="flowDefName" jdbcType="VARCHAR"/>
+        <result column="flow_type" property="flowType" jdbcType="INTEGER"/>
+        <result column="flow_mode" property="flowMode" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="initiator_id" property="initiatorId" jdbcType="BIGINT"/>
+        <result column="initiator_name" property="initiatorName" jdbcType="VARCHAR"/>
+        <result column="initiator_dept_id" property="initiatorDeptId" jdbcType="BIGINT"/>
+        <result column="initiator_dept_name" property="initiatorDeptName" jdbcType="VARCHAR"/>
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP"/>
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP"/>
+        <result column="duration" property="duration" jdbcType="BIGINT"/>
+        <result column="total_nodes" property="totalNodes" jdbcType="INTEGER"/>
+        <result column="completed_nodes" property="completedNodes" jdbcType="INTEGER"/>
+        <result column="termination_reason" property="terminationReason" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, flow_instance_id, document_id, flow_def_id, flow_def_name, flow_type, flow_mode,
+        status, initiator_id, initiator_name, initiator_dept_id, initiator_dept_name,
+        start_time, end_time, duration, total_nodes, completed_nodes, termination_reason, created_at
+    </sql>
+
+</mapper>
+

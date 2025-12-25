@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xtt.cloud.oa.document.domain.mapper.gw.IssuanceInfoMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="xtt.cloud.oa.document.domain.entity.gw.IssuanceInfo">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="document_id" property="documentId" jdbcType="BIGINT"/>
+        <result column="draft_user_id" property="draftUserId" jdbcType="BIGINT"/>
+        <result column="draft_dept_id" property="draftDeptId" jdbcType="BIGINT"/>
+        <result column="issuing_unit" property="issuingUnit" jdbcType="VARCHAR"/>
+        <result column="document_category" property="documentCategory" jdbcType="VARCHAR"/>
+        <result column="urgency_level" property="urgencyLevel" jdbcType="INTEGER"/>
+        <result column="secret_level" property="secretLevel" jdbcType="INTEGER"/>
+        <result column="word_count" property="wordCount" jdbcType="INTEGER"/>
+        <result column="printing_copies" property="printingCopies" jdbcType="INTEGER"/>
+        <result column="main_recipients" property="mainRecipients" jdbcType="VARCHAR"/>
+        <result column="cc_recipients" property="ccRecipients" jdbcType="VARCHAR"/>
+        <result column="keywords" property="keywords" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, document_id, draft_user_id, draft_dept_id, issuing_unit, document_category,
+        urgency_level, secret_level, word_count, printing_copies, main_recipients, cc_recipients,
+        keywords, created_at, updated_at
+    </sql>
+
+</mapper>
+
