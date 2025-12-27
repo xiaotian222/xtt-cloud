@@ -25,6 +25,7 @@ public class FlowNode {
     private Integer isFreeFlow;     // 是否为自由流节点(0:否,1:是)
     private Integer allowFreeFlow; // 是否允许在此节点使用自由流(0:不允许,1:允许)
     private Integer isLastNode;     // 是否为最后一个节点(0:否,1:是)
+    private String flowActionIds;   // FlowAction ID列表（JSON格式字符串，如：["1","2","3"]）
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -116,6 +117,9 @@ public class FlowNode {
     
     public Integer getIsLastNode() { return isLastNode; }
     public void setIsLastNode(Integer isLastNode) { this.isLastNode = isLastNode; }
+    
+    public String getFlowActionIds() { return flowActionIds; }
+    public void setFlowActionIds(String flowActionIds) { this.flowActionIds = flowActionIds; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

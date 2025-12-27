@@ -11,6 +11,7 @@ import xtt.cloud.oa.workflow.application.flow.query.FlowInstanceQuery;
 import xtt.cloud.oa.workflow.domain.flow.model.aggregate.FlowInstance;
 import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode;
 import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance;
+import xtt.cloud.oa.workflow.domain.flow.model.valueobject.Approver;
 import xtt.cloud.oa.workflow.domain.flow.repository.FlowInstanceRepository;
 import xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeInstanceRepository;
 import xtt.cloud.oa.workflow.domain.flow.repository.FlowNodeRepository;
@@ -122,7 +123,7 @@ public class FlowApplicationService {
             throw new SecurityException("无权审批此节点");
         }
 
-        // 5. 完成节点实例
+        // 5. 完结当前节点实例
         nodeInstance.setStatus(FlowNodeInstance.STATUS_COMPLETED);
         nodeInstance.setComments(command.getComments());
         nodeInstance.setHandledAt(java.time.LocalDateTime.now());
@@ -130,11 +131,12 @@ public class FlowApplicationService {
         flowNodeInstanceRepository.save(nodeInstance);
 
         // 6. 检查是否可以流转到下一个节点
-        FlowNode currentNodeDef = flowNodeRepository.findById(nodeInstance.getNodeId())
+        FlowNode currentNodeDef = flowNodeRepository.findById(
+                        xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowNodeId.of(nodeInstance.getNodeId()))
                 .orElseThrow(() -> new IllegalArgumentException("节点不存在: " + nodeInstance.getNodeId()));
         Long flowInstanceId = flowInstance.getId() != null ? flowInstance.getId().getValue() : null;
         if (nodeRoutingService.canMoveToNextNode(currentNodeDef, flowInstanceId)) {
-            moveToNextNode(flowInstance, currentNodeDef, nodeInstance);
+            nodeRoutingService.moveToNextNode(flowInstance, currentNodeDef, nodeInstance);
         } else {
             // 检查流程是否完成
             Map<String, Object> processVariables = flowInstance.getProcessVariables().getAllVariables();
@@ -152,6 +154,34 @@ public class FlowApplicationService {
         
         // 8. 发布领域事件
         publishDomainEvents(flowInstance);
+    }
+
+    /**
+     * 审批回退
+     */
+    @Transactional
+    public void rollback(RollbackCommand command) {
+        log.info("回退流程，流程实例ID: {}, 目标节点ID: {}, 操作人ID: {}",
+                command.getFlowInstanceId(), command.getTargetNodeId(), command.getApproverId());
+
+        // 1. 加载流程实例聚合根
+        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(command.getFlowInstanceId());
+
+        // 2. 验证权限
+        // TODO: 实现权限验证
+
+        // 3. 回退到指定节点
+        nodeRoutingService.rollbackToNode(flowInstance, command.getTargetNodeId(), command.getApproverId(), command.getReason());
+
+        // 4. 保存聚合根
+        flowInstanceRepository.save(flowInstance);
+
+        // 5. 发布领域事件
+        publishDomainEvents(flowInstance);
+
+        // 6. 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
     }
     
     /**
@@ -189,7 +219,7 @@ public class FlowApplicationService {
         
         // 6. 如果指定了回退节点，执行回退
         if (command.hasRollback()) {
-            rollbackToNode(flowInstance, command.getRollbackToNodeId(), command.getApproverId(), command.getComments());
+            nodeRoutingService.rollbackToNode(flowInstance, command.getRollbackToNodeId(), command.getApproverId(), command.getComments());
         } else {
             // 否则终止流程
             flowInstance.terminate();
@@ -241,35 +271,7 @@ public class FlowApplicationService {
         FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
         cacheUpdateService.updateFlowInstanceCache(dto);
     }
-    
-    /**
-     * 回退流程
-     */
-    @Transactional
-    public void rollback(RollbackCommand command) {
-        log.info("回退流程，流程实例ID: {}, 目标节点ID: {}, 操作人ID: {}", 
-                command.getFlowInstanceId(), command.getTargetNodeId(), command.getApproverId());
-        
-        // 1. 加载流程实例聚合根
-        FlowInstance flowInstance = flowInstanceFactory.loadFlowInstance(command.getFlowInstanceId());
-        
-        // 2. 验证权限
-        // TODO: 实现权限验证
-        
-        // 3. 回退到指定节点
-        rollbackToNode(flowInstance, command.getTargetNodeId(), command.getApproverId(), command.getReason());
-        
-        // 4. 保存聚合根
-        flowInstanceRepository.save(flowInstance);
-        
-        // 5. 发布领域事件
-        publishDomainEvents(flowInstance);
-        
-        // 6. 更新缓存
-        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
-        cacheUpdateService.updateFlowInstanceCache(dto);
-    }
-    
+
     /**
      * 暂停流程
      */
@@ -303,7 +305,7 @@ public class FlowApplicationService {
     // ===================流程对象获取方法==========================
 
     /**
-     * 查询流程实例
+     * 加载流程实例
      * 
      * 使用分布式锁防止缓存击穿：当缓存未命中时，只有一个线程查询数据库并更新缓存
      * 高并发情况下才会出现，
@@ -390,7 +392,6 @@ public class FlowApplicationService {
     }
     
     // ========== 私有方法 ==========
-    
 
     /**
      * 加载流程实例的所有节点实例
@@ -424,112 +425,4 @@ public class FlowApplicationService {
         }
     }
 
-    
-    /**
-     * 流转到下一个节点
-     */
-    private void moveToNextNode(FlowInstance flowInstance, FlowNode currentNodeDef, FlowNodeInstance currentNode) {
-        log.debug("流转到下一个节点，流程实例ID: {}, 当前节点ID: {}", 
-                flowInstance.getId() != null ? flowInstance.getId().getValue() : null, 
-                currentNodeDef.getId());
-        
-        // 1. 获取下一个节点列表
-        Map<String, Object> processVariables = flowInstance.getProcessVariables().getAllVariables();
-        List<Long> nextNodeIds = nodeRoutingService.getNextNodeIds(
-                currentNodeDef.getId(), 
-                flowInstance.getFlowDefId(), 
-                processVariables);
-        
-        if (nextNodeIds.isEmpty()) {
-            log.debug("没有下一个节点，流程将结束");
-            return;
-        }
-        
-        // 2. 检查汇聚节点
-        for (Long nextNodeId : nextNodeIds) {
-            if (nodeRoutingService.isConvergenceNode(nextNodeId, flowInstance.getFlowDefId())) {
-                // 如果是汇聚节点，检查是否可以汇聚
-                if (!nodeRoutingService.canConverge(nextNodeId, 
-                        flowInstance.getId() != null ? flowInstance.getId().getValue() : null)) {
-                    log.debug("汇聚节点 {} 尚未满足汇聚条件，等待其他分支完成", nextNodeId);
-                    continue;
-                }
-            }
-            
-            // 3. 获取节点定义
-            Optional<FlowNode> nextNodeOpt = flowNodeRepository.findById(nextNodeId);
-            if (nextNodeOpt.isEmpty()) {
-                log.warn("下一个节点不存在，节点ID: {}", nextNodeId);
-                continue;
-            }
-            FlowNode nextNode = nextNodeOpt.get();
-            
-            // 4. 检查是否应该跳过节点
-            if (nodeRoutingService.shouldSkipNode(nextNodeId, flowInstance.getFlowDefId(), processVariables)) {
-                // 创建已跳过的节点实例
-                createSkippedNodeInstance(flowInstance, nextNode);
-                // 递归处理下一个节点
-                moveToNextNode(flowInstance, nextNode, null);
-                return;
-            }
-            
-            // 5. 创建节点实例并分配审批人
-            flowInstanceFactory.createAndAssignNodeInstances(flowInstance, nextNode);
-        }
-        
-        // 6. 更新当前节点（如果有下一个节点，更新为第一个）
-        if (!nextNodeIds.isEmpty()) {
-            flowInstance.moveToNode(nextNodeIds.get(0));
-        }
-    }
-    
-    /**
-     * 创建已跳过的节点实例
-     */
-    private void createSkippedNodeInstance(FlowInstance flowInstance, FlowNode node) {
-        // 创建跳过状态的节点实例（不需要审批人）
-        FlowNodeInstance nodeInstance = FlowNodeInstance.create(
-                flowInstance.getId() != null ? flowInstance.getId().getValue() : null,
-                node.getId(),
-                null  // 跳过节点不需要审批人
-        );
-        // 设置为跳过状态
-        nodeInstance.skip("节点已跳过（满足跳过条件）");
-        
-        flowNodeInstanceRepository.save(nodeInstance);
-        
-        log.info("节点已跳过，节点名称: {}, 节点ID: {}", node.getNodeName(), node.getId());
-    }
-    
-    
-    /**
-     * 回退到指定节点
-     */
-    private void rollbackToNode(FlowInstance flowInstance, Long targetNodeId, Long operatorId, String reason) {
-        log.info("回退到节点，流程实例ID: {}, 目标节点ID: {}, 操作人ID: {}", 
-                flowInstance.getId() != null ? flowInstance.getId().getValue() : null, 
-                targetNodeId, operatorId);
-        
-        // 1. 验证目标节点是否存在
-        FlowNode targetNode = flowNodeRepository.findById(targetNodeId)
-                .orElseThrow(() -> new IllegalArgumentException("目标节点不存在: " + targetNodeId));
-        
-        // 2. 验证目标节点是否属于当前流程定义
-        if (!targetNode.getFlowDefId().equals(flowInstance.getFlowDefId())) {
-            throw new IllegalArgumentException("目标节点不属于当前流程定义");
-        }
-        
-        // 3. 取消当前节点及之后的所有待办任务
-        // TODO: 实现取消待办任务的逻辑
-        
-        // 4. 更新流程实例当前节点
-        flowInstance.moveToNode(targetNodeId);
-        
-        // 5. 创建目标节点的节点实例
-        flowInstanceFactory.createAndAssignNodeInstances(flowInstance, targetNode);
-        
-        log.info("回退成功，流程实例ID: {}, 目标节点ID: {}", 
-                flowInstance.getId() != null ? flowInstance.getId().getValue() : null, 
-                targetNodeId);
-    }
 }

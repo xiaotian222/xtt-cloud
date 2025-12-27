@@ -23,8 +23,8 @@
         <module>auth</module>
         <module>platform</module>
         <module>gateway</module>
-        <module>document</module>
         <module>workflow</module>
+        <!--        <module>document</module>-->
     </modules>
 
     <dependencyManagement>

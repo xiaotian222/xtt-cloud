@@ -7,6 +7,7 @@ package xtt.cloud.oa.workflow.domain.flow.model.entity;
  * 
  * @author xtt
  */
+@Deprecated
 public class FlowDefinition {
     
     private final xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowDefinition po;

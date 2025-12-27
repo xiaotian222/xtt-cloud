@@ -15,6 +15,7 @@ import xtt.cloud.oa.workflow.application.flow.command.RejectCommand;
  * @author xtt
  */
 @Service
+@Deprecated
 public class FlowApprovalApplicationService {
     
     private static final Logger log = LoggerFactory.getLogger(FlowApprovalApplicationService.class);

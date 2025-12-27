@@ -1,6 +1,8 @@
 package xtt.cloud.oa.workflow.domain.flow.service;
 
+import xtt.cloud.oa.workflow.domain.flow.model.aggregate.FlowInstance;
 import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNode;
+import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance;
 
 import java.util.List;
 
@@ -23,7 +25,7 @@ public interface NodeRoutingService {
      */
     List<Long> getNextNodeIds(Long currentNodeId, Long flowDefId, 
                               java.util.Map<String, Object> processVariables);
-    
+
     /**
      * 判断是否为汇聚节点
      * 
@@ -81,7 +83,15 @@ public interface NodeRoutingService {
      * @return 是否任一完成
      */
     boolean anyParallelNodeCompleted(FlowNode node, Long flowInstanceId);
-    
+
+    /**
+     *  流转到下一个节点
+     * @param flowInstance
+     * @param currentNodeDef
+     * @param currentNode
+     */
+    void moveToNextNode(FlowInstance flowInstance, FlowNode currentNodeDef, FlowNodeInstance currentNode);
+
     /**
      * 检查流程是否可以完成
      * 
@@ -93,5 +103,14 @@ public interface NodeRoutingService {
      */
     boolean canCompleteFlow(Long currentNodeId, Long flowDefId, Long flowInstanceId, 
                            java.util.Map<String, Object> processVariables);
+
+    /**
+     *  回退到指定节点
+     * @param flowInstance
+     * @param targetNodeId
+     * @param operatorId
+     * @param reason
+     */
+    void rollbackToNode(FlowInstance flowInstance, Long targetNodeId, Long operatorId, String reason);
 }
 

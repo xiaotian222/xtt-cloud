@@ -121,7 +121,8 @@ public class FlowInstanceApplicationFactory {
                     (flowInstance != null && flowInstance.getId() != null ? flowInstance.getId().getValue() : null));
         }
         
-        List<FlowNode> nodes = flowNodeRepository.findByFlowDefId(flowInstance.getFlowDefId());
+        List<FlowNode> nodes = flowNodeRepository.findByFlowDefId(
+                xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowDefinitionId.of(flowInstance.getFlowDefId()));
         return nodes;
     }
     
