@@ -109,7 +109,7 @@ public class FlowApplicationService {
         flowInstance = flowInstanceRepository.save(flowInstance);
 
         // 4. 加载节点列表
-        List<FlowNode> nodes = flowInstanceFactory.loadFlowNodes(flowInstance);
+        List<FlowNode> nodes = flowInstanceFactory.loadFlowNodes(flowInstance.getFlowDefId());
         if (nodes.isEmpty()) {
             throw new IllegalArgumentException("流程定义没有配置节点，流程定义ID: " + flowInstance.getFlowDefId());
         }
@@ -175,10 +175,7 @@ public class FlowApplicationService {
         // todo 针对一个节点中审批人是多个的情况下，暂定为或签。 1.删除其他的nodeInstance 2.删除其他的todoTask
 
         // 6. 检查并流转到下一个节点
-//        FlowNode currentNodeDef = flowNodeRepository.findById(
-//                        xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowNodeId.of(nodeInstance.getNodeId()))
-//                .orElseThrow(() -> new IllegalArgumentException("节点不存在: " + nodeInstance.getNodeId()));
-//        Long flowInstanceId = flowInstance.getId() != null ? flowInstance.getId().getValue() : null;
+        Long flowInstanceId = flowInstance.getId() != null ? flowInstance.getId().getValue() : null;
 
         FlowDefinition flowDefinition = FlowDefinitionFactory.loadFlowDefinition(FlowDefinitionId.of(flowInstance.getFlowDefId()));
         if (nodeRoutingService.canMoveToNextNode(flowInstance, flowDefinition)) {
@@ -492,5 +489,187 @@ public class FlowApplicationService {
         }
 
         log.info("节点实例创建成功，节点名称: {}, 创建了 {} 个实例", node.getNodeName(), approvers.size());
+    }
+    
+    /**
+     * 查询流程实例列表
+     */
+    @Transactional(readOnly = true)
+    public List<FlowInstanceDTO> queryFlowInstances(xtt.cloud.oa.workflow.application.flow.query.FlowInstanceQuery query) {
+        // TODO: 实现查询逻辑，根据查询条件从数据库查询流程实例列表
+        // 这里暂时返回空列表，需要根据实际需求实现
+        log.debug("查询流程实例列表，查询条件: {}", query);
+        return List.of();
+    }
+    
+    /**
+     * 开启自由流转
+     * 
+     * 在固定流中的某个节点开启自由流转，允许用户进行自由流转操作
+     * 
+     * @param command 开启自由流转命令
+     */
+    @Transactional
+    public void startFreeFlow(StartFreeFlowCommand command) {
+        log.info("开启自由流转，流程实例ID: {}, 节点实例ID: {}, 操作人ID: {}", 
+                command.getFlowInstanceId(), command.getNodeInstanceId(), command.getOperatorId());
+        
+        // 1. 加载流程实例
+        FlowInstance flowInstance = flowInstanceRepository.findById(
+                xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowInstanceId.of(
+                        command.getFlowInstanceId()))
+                .orElseThrow(() -> new IllegalArgumentException("流程实例不存在: " + command.getFlowInstanceId()));
+        
+        // 2. 验证流程状态
+        if (!flowInstance.getStatus().canProceed()) {
+            throw new IllegalStateException("流程状态不允许开启自由流转，当前状态: " + flowInstance.getStatus());
+        }
+        
+        // 3. 验证是否已经在自由流转状态
+        if (flowInstance.isInFreeFlow()) {
+            throw new IllegalStateException("流程已处于自由流转状态");
+        }
+        
+        // 4. 获取节点实例
+        FlowNodeInstance nodeInstance = flowNodeInstanceRepository.findById(
+                command.getNodeInstanceId())
+                .orElseThrow(() -> new IllegalArgumentException("节点实例不存在: " + command.getNodeInstanceId()));
+        
+        // 5. 验证节点状态
+        if (!nodeInstance.getStatus().canHandle()) {
+            throw new IllegalStateException("节点状态不允许开启自由流转，当前状态: " + nodeInstance.getStatus());
+        }
+        
+        // 6. 验证操作人权限
+        if (!nodeInstance.getApprover().getUserId().equals(command.getOperatorId())) {
+            throw new SecurityException("无权操作此节点");
+        }
+        
+        // 7. 验证节点是否允许自由流转
+        if (nodeInstance.getNodeId() != null) {
+            java.util.Optional<FlowNode> nodeOpt = 
+                    flowNodeRepository.findById(xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowNodeId.of(nodeInstance.getNodeId()));
+            if (nodeOpt.isPresent()) {
+                FlowNode node = nodeOpt.get();
+                // 检查节点的 allowFreeFlow 字段（通过 PO 获取）
+                xtt.cloud.oa.workflow.infrastructure.persistence.pojo.FlowNode nodePO = node.getPO();
+                if (nodePO.getAllowFreeFlow() == null || nodePO.getAllowFreeFlow() != 1) {
+                    throw new IllegalStateException("该节点不允许开启自由流转");
+                }
+            }
+        }
+        
+        // 8. 开启自由流转
+        flowInstance.startFreeFlow(command.getNodeInstanceId());
+        
+        // 9. 保存流程实例
+        flowInstanceRepository.save(flowInstance);
+        
+        // 10. 发布领域事件
+        publishDomainEvents(flowInstance);
+        
+        // 11. 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
+        
+        log.info("自由流转开启成功，流程实例ID: {}, 节点实例ID: {}", 
+                command.getFlowInstanceId(), command.getNodeInstanceId());
+    }
+    
+    /**
+     * 结束自由流转
+     * 
+     * 结束固定流中的自由流转，回到固定流程继续执行
+     * 
+     * @param command 结束自由流转命令
+     */
+    @Transactional
+    public void endFreeFlow(EndFreeFlowCommand command) {
+        log.info("结束自由流转，流程实例ID: {}, 节点实例ID: {}, 操作人ID: {}", 
+                command.getFlowInstanceId(), command.getNodeInstanceId(), command.getOperatorId());
+        
+        // 1. 加载流程实例
+        FlowInstance flowInstance = flowInstanceRepository.findById(
+                xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowInstanceId.of(
+                        command.getFlowInstanceId()))
+                .orElseThrow(() -> new IllegalArgumentException("流程实例不存在: " + command.getFlowInstanceId()));
+        
+        // 2. 验证是否在自由流转状态
+        if (!flowInstance.isInFreeFlow()) {
+            throw new IllegalStateException("流程不在自由流转状态");
+        }
+        
+        // 3. 获取当前自由流转的节点实例
+        Long sourceNodeInstanceId = flowInstance.getFreeFlowContext().getSourceNodeInstanceId();
+        FlowNodeInstance sourceNodeInstance = flowNodeInstanceRepository.findById(sourceNodeInstanceId)
+                .orElseThrow(() -> new IllegalArgumentException("开启自由流转的节点实例不存在: " + sourceNodeInstanceId));
+        
+        // 4. 验证操作人权限（必须是开启自由流转的节点实例的审批人）
+        if (!sourceNodeInstance.getApprover().getUserId().equals(command.getOperatorId())) {
+            throw new SecurityException("无权结束自由流转");
+        }
+        
+        // 5. 检查是否还有未完成的自由流节点实例
+        List<FlowNodeInstance> freeFlowNodeInstances = flowNodeInstanceRepository.findByFlowInstanceId(
+                flowInstance.getId() != null ? flowInstance.getId().getValue() : null)
+                .stream()
+                .filter(ni -> ni.getNodeId() == null) // 自由流节点没有预定义的节点ID
+                .filter(ni -> !ni.isFinished()) // 未完成的节点
+                .collect(java.util.stream.Collectors.toList());
+        
+        if (!freeFlowNodeInstances.isEmpty()) {
+            throw new IllegalStateException("存在未完成的自由流节点实例，无法结束自由流转");
+        }
+        
+        // 6. 结束自由流转
+        flowInstance.endFreeFlow();
+        
+        // 7. 完成开启自由流转的节点实例（如果还未完成）
+        if (sourceNodeInstance.getStatus().canHandle()) {
+            sourceNodeInstance.complete(command.getComments() != null ? command.getComments() : "自由流转已结束");
+            flowNodeInstanceRepository.save(sourceNodeInstance);
+        }
+        
+        // 8. 保存流程实例
+        flowInstanceRepository.save(flowInstance);
+        
+        // 9. 继续固定流程（移动到下一个节点）
+        if (sourceNodeInstance.getNodeId() != null) {
+            java.util.Optional<FlowNode> nodeOpt = 
+                    flowNodeRepository.findById(xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowNodeId.of(sourceNodeInstance.getNodeId()));
+            if (nodeOpt.isPresent()) {
+                // 加载流程定义
+                FlowDefinition flowDefinition = FlowDefinitionFactory.loadFlowDefinition(
+                        FlowDefinitionId.of(flowInstance.getFlowDefId()));
+                
+                // 使用节点路由服务继续流程
+                if (nodeRoutingService.canMoveToNextNode(flowInstance, flowDefinition)) {
+                    nodeRoutingService.moveToNextNode(flowInstance, flowDefinition);
+                } else {
+                    // 检查是否可以完成流程
+                    Long flowInstanceId = flowInstance.getId() != null ? flowInstance.getId().getValue() : null;
+                    if (nodeRoutingService.canCompleteFlow(
+                            flowInstance.getCurrentNodeId(),
+                            flowInstance.getFlowDefId(),
+                            flowInstanceId,
+                            flowInstance.getProcessVariables().getAllVariables())) {
+                        flowInstance.complete();
+                    }
+                }
+            }
+        }
+        
+        // 10. 再次保存流程实例（更新当前节点或状态）
+        flowInstanceRepository.save(flowInstance);
+        
+        // 11. 发布领域事件
+        publishDomainEvents(flowInstance);
+        
+        // 12. 更新缓存
+        FlowInstanceDTO dto = FlowInstanceAssembler.toDTO(flowInstance);
+        cacheUpdateService.updateFlowInstanceCache(dto);
+        
+        log.info("自由流转结束成功，流程实例ID: {}, 节点实例ID: {}", 
+                command.getFlowInstanceId(), command.getNodeInstanceId());
     }
 }

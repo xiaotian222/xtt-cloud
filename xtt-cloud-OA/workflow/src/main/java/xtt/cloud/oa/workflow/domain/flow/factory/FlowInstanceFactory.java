@@ -110,18 +110,18 @@ public class FlowInstanceFactory {
         
         return flowInstance;
     }
-    
+
     /**
      * 加载流程节点列表
      */
-    private List<FlowNode> loadFlowNodes(Long flowDefId) {
+    public List<FlowNode> loadFlowNodes(Long flowDefId) {
         if (flowDefId == null || flowDefId <= 0) {
             throw new IllegalArgumentException("流程定义ID必须大于0");
         }
-        
+
         return flowNodeRepository.findByFlowDefId(FlowDefinitionId.of(flowDefId));
     }
-    
+
     /**
      * 获取第一个节点（按 orderNum 排序）
      */

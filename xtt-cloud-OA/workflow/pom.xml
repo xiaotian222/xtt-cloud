@@ -12,8 +12,8 @@
 
     <artifactId>workflow</artifactId>
     <packaging>jar</packaging>
-    <name>OA workflow Service</name>
-    <description>工作流服务</description>
+    <name>OA workflow Starter</name>
+    <description>工作流 Starter - 可集成到其他应用中</description>
 
     <dependencies>
         <dependency>
@@ -60,6 +60,12 @@
             <groupId>xtt.cloud</groupId>
             <artifactId>xtt-cloud-starter-rabbitmq</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- Spring Boot Configuration Processor -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 

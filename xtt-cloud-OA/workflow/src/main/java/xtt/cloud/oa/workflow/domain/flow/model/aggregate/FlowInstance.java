@@ -5,6 +5,7 @@ import xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowStatus;
 import xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowType;
 import xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowMode;
 import xtt.cloud.oa.workflow.domain.flow.model.valueobject.ProcessVariables;
+import xtt.cloud.oa.workflow.domain.flow.model.valueobject.FreeFlowContext;
 import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance;
 import xtt.cloud.oa.workflow.domain.flow.event.FlowStartedEvent;
 import xtt.cloud.oa.workflow.domain.flow.event.FlowCompletedEvent;
@@ -43,6 +44,8 @@ public class FlowInstance {
     private LocalDateTime updatedAt;
     // 流程变量
     private ProcessVariables processVariables;
+    // 自由流转上下文（用于固定流中的自由流转）
+    private FreeFlowContext freeFlowContext;
 
     // 聚合内的实体集合
     private List<FlowNodeInstance> nodeInstances;
@@ -57,6 +60,7 @@ public class FlowInstance {
         this.nodeInstances = new ArrayList<>();
         this.domainEvents = new ArrayList<>();
         this.processVariables = new ProcessVariables();
+        this.freeFlowContext = FreeFlowContext.notInFreeFlow();
     }
     
     /**
@@ -360,6 +364,51 @@ public class FlowInstance {
     
     public void setNodeInstances(List<FlowNodeInstance> nodeInstances) {
         this.nodeInstances = nodeInstances != null ? new ArrayList<>(nodeInstances) : new ArrayList<>();
+    }
+    
+    /**
+     * 开启自由流转
+     * 
+     * @param sourceNodeInstanceId 开启自由流转的节点实例ID
+     */
+    public void startFreeFlow(Long sourceNodeInstanceId) {
+        if (freeFlowContext.isInFreeFlow()) {
+            throw new IllegalStateException("流程已处于自由流转状态");
+        }
+        this.freeFlowContext = FreeFlowContext.inFreeFlow(sourceNodeInstanceId);
+        this.updatedAt = LocalDateTime.now();
+    }
+    
+    /**
+     * 结束自由流转
+     */
+    public void endFreeFlow() {
+        if (!freeFlowContext.isInFreeFlow()) {
+            throw new IllegalStateException("流程不在自由流转状态");
+        }
+        this.freeFlowContext = freeFlowContext.endFreeFlow();
+        this.updatedAt = LocalDateTime.now();
+    }
+    
+    /**
+     * 判断是否处于自由流转状态
+     */
+    public boolean isInFreeFlow() {
+        return freeFlowContext != null && freeFlowContext.isInFreeFlow();
+    }
+    
+    /**
+     * 获取自由流转上下文
+     */
+    public FreeFlowContext getFreeFlowContext() {
+        return freeFlowContext;
+    }
+    
+    /**
+     * 设置自由流转上下文（仅用于持久化层重建对象）
+     */
+    public void setFreeFlowContext(FreeFlowContext freeFlowContext) {
+        this.freeFlowContext = freeFlowContext != null ? freeFlowContext : FreeFlowContext.notInFreeFlow();
     }
     
     @Override

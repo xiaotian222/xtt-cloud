@@ -171,5 +171,35 @@ public class FlowController {
         Object value = flowApplicationService.getProcessVariable(flowInstanceId, key);
         return ResponseEntity.ok(value);
     }
+    
+    /**
+     * 开启自由流转
+     */
+    @PostMapping("/free-flow/start")
+    public ResponseEntity<Void> startFreeFlow(@RequestBody StartFreeFlowRequest request) {
+        StartFreeFlowCommand command = new StartFreeFlowCommand();
+        command.setFlowInstanceId(request.getFlowInstanceId());
+        command.setNodeInstanceId(request.getNodeInstanceId());
+        command.setOperatorId(request.getOperatorId());
+        command.setComments(request.getComments());
+        
+        flowApplicationService.startFreeFlow(command);
+        return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * 结束自由流转
+     */
+    @PostMapping("/free-flow/end")
+    public ResponseEntity<Void> endFreeFlow(@RequestBody EndFreeFlowRequest request) {
+        EndFreeFlowCommand command = new EndFreeFlowCommand();
+        command.setFlowInstanceId(request.getFlowInstanceId());
+        command.setNodeInstanceId(request.getNodeInstanceId());
+        command.setOperatorId(request.getOperatorId());
+        command.setComments(request.getComments());
+        
+        flowApplicationService.endFreeFlow(command);
+        return ResponseEntity.ok().build();
+    }
 }
 
