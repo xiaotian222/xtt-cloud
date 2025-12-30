@@ -56,6 +56,11 @@
             <artifactId>xtt-cloud-starter-redis</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>xtt.cloud</groupId>
+            <artifactId>xtt-cloud-starter-rabbitmq</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 

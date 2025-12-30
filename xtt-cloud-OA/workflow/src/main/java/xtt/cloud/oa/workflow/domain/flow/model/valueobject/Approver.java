@@ -5,7 +5,7 @@ import java.util.Objects;
 /**
  * 审批人值对象
  *  用户，部门，角色，用户组，子流程。
- *
+ *  todo
  * 
  * @author xtt
  */

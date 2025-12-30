@@ -9,6 +9,7 @@ public class ApproveCommand {
     
     private Long flowInstanceId;
     private Long nodeInstanceId;
+    private Long nodeId;
     private Long approverId;
     private String comments;
     private Boolean forward; // 是否转办
@@ -67,6 +68,14 @@ public class ApproveCommand {
     
     public boolean isForward() {
         return Boolean.TRUE.equals(forward);
+    }
+
+    public Long getNodeId() {
+        return nodeId;
+    }
+
+    public void setNodeId(Long nodeId) {
+        this.nodeId = nodeId;
     }
 }
 

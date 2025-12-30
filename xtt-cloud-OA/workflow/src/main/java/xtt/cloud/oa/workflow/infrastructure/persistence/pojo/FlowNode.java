@@ -21,54 +21,20 @@ public class FlowNode {
     private String nextNodeIds;     // 下一个节点ID列表（JSON格式，用于并行分支）
     private String skipCondition;  // 跳过条件
     private Integer required;       // 是否必须(0:可跳过,1:必须)
-    private Integer parallelMode;   // 并行模式(0:串行,1:并行-会签,2:并行-或签)
+
+//    private Integer parallelMode;   // 并行模式(0:串行,1:并行-会签,2:并行-或签) - 已废弃，使用网关模式
+    private Integer gatewayType;    // 网关类型(0:非网关,1:并行Split,2:并行Join,3:条件Split,4:条件Join)
+    private Integer gatewayMode;    // 并行网关模式(1:会签,2:或签) - 仅用于并行网关
+    private Long gatewayId;         // 网关ID（用于关联Split和Join）
+    private String conditionExpression; // 条件表达式（SpEL格式，仅用于条件网关）
+
     private Integer isFreeFlow;     // 是否为自由流节点(0:否,1:是)
     private Integer allowFreeFlow; // 是否允许在此节点使用自由流(0:不允许,1:允许)
     private Integer isLastNode;     // 是否为最后一个节点(0:否,1:是)
     private String flowActionIds;   // FlowAction ID列表（JSON格式字符串，如：["1","2","3"]）
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
-    // 节点类型常量
-    public static final int NODE_TYPE_APPROVAL = 1;  // 审批节点
-    public static final int NODE_TYPE_NOTIFY = 2;   // 抄送节点
-    public static final int NODE_TYPE_CONDITION = 3; // 条件节点
-    public static final int NODE_TYPE_AUTO = 4;      // 自动节点
-    public static final int NODE_TYPE_FREE_FLOW = 5; // 自由流节点
-    
-    // 审批人类型常量
-    public static final int APPROVER_TYPE_USER = 1;        // 指定人员
-    public static final int APPROVER_TYPE_ROLE = 2;        // 指定角色
-    public static final int APPROVER_TYPE_DEPT_LEADER = 3; // 指定部门负责人
-    public static final int APPROVER_TYPE_INITIATOR = 4;    // 发起人指定
-    
-    // 并行模式常量
-    public static final int PARALLEL_MODE_SERIAL = 0;      // 串行
-    public static final int PARALLEL_MODE_PARALLEL_ALL = 1; // 并行-会签（所有节点都完成）
-    public static final int PARALLEL_MODE_PARALLEL_ANY = 2; // 并行-或签（任一节点完成）
-    
-    /**
-     * 判断是否为并行模式（会签或或签）
-     */
-    public boolean isParallelMode() {
-        return parallelMode != null && 
-               (parallelMode == PARALLEL_MODE_PARALLEL_ALL || parallelMode == PARALLEL_MODE_PARALLEL_ANY);
-    }
-    
-    /**
-     * 判断是否为会签模式
-     */
-    public boolean isParallelAllMode() {
-        return parallelMode != null && parallelMode == PARALLEL_MODE_PARALLEL_ALL;
-    }
-    
-    /**
-     * 判断是否为或签模式
-     */
-    public boolean isParallelAnyMode() {
-        return parallelMode != null && parallelMode == PARALLEL_MODE_PARALLEL_ANY;
-    }
-    
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -105,10 +71,7 @@ public class FlowNode {
     
     public Integer getRequired() { return required; }
     public void setRequired(Integer required) { this.required = required; }
-    
-    public Integer getParallelMode() { return parallelMode; }
-    public void setParallelMode(Integer parallelMode) { this.parallelMode = parallelMode; }
-    
+
     public Integer getIsFreeFlow() { return isFreeFlow; }
     public void setIsFreeFlow(Integer isFreeFlow) { this.isFreeFlow = isFreeFlow; }
     
@@ -120,6 +83,18 @@ public class FlowNode {
     
     public String getFlowActionIds() { return flowActionIds; }
     public void setFlowActionIds(String flowActionIds) { this.flowActionIds = flowActionIds; }
+    
+    public Integer getGatewayType() { return gatewayType; }
+    public void setGatewayType(Integer gatewayType) { this.gatewayType = gatewayType; }
+    
+    public Integer getGatewayMode() { return gatewayMode; }
+    public void setGatewayMode(Integer gatewayMode) { this.gatewayMode = gatewayMode; }
+    
+    public Long getGatewayId() { return gatewayId; }
+    public void setGatewayId(Long gatewayId) { this.gatewayId = gatewayId; }
+    
+    public String getConditionExpression() { return conditionExpression; }
+    public void setConditionExpression(String conditionExpression) { this.conditionExpression = conditionExpression; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -1,0 +1,272 @@
+version: '3.8'
+
+# 生产环境 Docker Compose 配置
+# 使用方式: docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  # ========== 基础设施服务 ==========
+  
+  mysql:
+    image: mysql:8.0
+    container_name: xtt-cloud-oa-mysql-prod
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root123456}
+      - MYSQL_DATABASE=xtt_cloud_oa
+      - MYSQL_USER=${MYSQL_USER:-xtt}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-xtt123456}
+      - TZ=Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data-prod:/var/lib/mysql
+      - ./config-init/sql:/docker-entrypoint-initdb.d
+    networks:
+      - xtt-cloud-network
+    restart: always
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=1000
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: xtt-cloud-oa-redis-prod
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data-prod:/data
+    networks:
+      - xtt-cloud-network
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123456} --maxmemory 1gb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: xtt-cloud-oa-nacos-prod
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_DB_NAME=nacos_config
+      - MYSQL_SERVICE_USER=${MYSQL_USER:-xtt}
+      - MYSQL_SERVICE_PASSWORD=${MYSQL_PASSWORD:-xtt123456}
+      - NACOS_AUTH_ENABLE=true
+      - NACOS_AUTH_TOKEN=${NACOS_AUTH_TOKEN:-SecretKey012345678901234567890123456789012345678901234567890123456789}
+      - NACOS_AUTH_IDENTITY_KEY=serverIdentity
+      - NACOS_AUTH_IDENTITY_VALUE=security
+      - TZ=Asia/Shanghai
+    ports:
+      - "${NACOS_PORT:-8848}:8848"
+      - "${NACOS_GRPC_PORT:-9848}:9848"
+    volumes:
+      - nacos-data-prod:/home/nacos/logs
+    networks:
+      - xtt-cloud-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ========== 业务服务 ==========
+
+  gateway:
+    image: ${DOCKER_REGISTRY:-xtt-cloud-oa}/gateway:${IMAGE_TAG:-latest}
+    container_name: xtt-cloud-oa-gateway-prod
+    ports:
+      - "${GATEWAY_PORT:-30010}:30010"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xms1024m -Xmx2048m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    volumes:
+      - ./logs/gateway:/app/logs
+    networks:
+      - xtt-cloud-network
+    depends_on:
+      nacos:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:30010/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  auth:
+    image: ${DOCKER_REGISTRY:-xtt-cloud-oa}/auth:${IMAGE_TAG:-latest}
+    container_name: xtt-cloud-oa-auth-prod
+    ports:
+      - "${AUTH_PORT:-8020}:8020"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xms1024m -Xmx2048m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    volumes:
+      - ./logs/auth:/app/logs
+    networks:
+      - xtt-cloud-network
+    depends_on:
+      nacos:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8020/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  platform:
+    image: ${DOCKER_REGISTRY:-xtt-cloud-oa}/platform:${IMAGE_TAG:-latest}
+    container_name: xtt-cloud-oa-platform-prod
+    ports:
+      - "${PLATFORM_PORT:-8085}:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xms1024m -Xmx2048m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-xtt}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-xtt123456}
+    volumes:
+      - ./logs/platform:/app/logs
+    networks:
+      - xtt-cloud-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  workflow:
+    image: ${DOCKER_REGISTRY:-xtt-cloud-oa}/workflow:${IMAGE_TAG:-latest}
+    container_name: xtt-cloud-oa-workflow-prod
+    ports:
+      - "${WORKFLOW_PORT:-8091}:8091"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xms1024m -Xmx2048m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/xtt_cloud_oa?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-xtt}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-xtt123456}
+    volumes:
+      - ./logs/workflow:/app/logs
+    networks:
+      - xtt-cloud-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      platform:
+        condition: service_started
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8091/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  xtt-cloud-network:
+    driver: bridge
+    name: xtt-cloud-oa-network-prod
+
+volumes:
+  mysql-data-prod:
+    name: xtt-cloud-oa-mysql-data-prod
+  redis-data-prod:
+    name: xtt-cloud-oa-redis-data-prod
+  nacos-data-prod:
+    name: xtt-cloud-oa-nacos-data-prod
+

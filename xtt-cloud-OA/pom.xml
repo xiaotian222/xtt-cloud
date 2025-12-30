@@ -24,6 +24,7 @@
         <module>platform</module>
         <module>gateway</module>
         <module>workflow</module>
+        <module>file</module>
         <!--        <module>document</module>-->
     </modules>
 

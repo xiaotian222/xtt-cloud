@@ -1,6 +1,7 @@
 package xtt.cloud.oa.workflow.domain.flow.repository;
 
 import xtt.cloud.oa.workflow.domain.flow.model.aggregate.FlowInstance;
+import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance;
 import xtt.cloud.oa.workflow.domain.flow.model.valueobject.FlowInstanceId;
 
 import java.util.List;
@@ -49,5 +50,7 @@ public interface FlowInstanceRepository {
      * 判断流程实例是否存在
      */
     boolean existsById(FlowInstanceId id);
+
+    List<FlowNodeInstance> findAllByFlowInstanceId(FlowInstanceId id);
 }
 

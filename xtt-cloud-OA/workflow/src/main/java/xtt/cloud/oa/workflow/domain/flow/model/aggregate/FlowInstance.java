@@ -9,6 +9,7 @@ import xtt.cloud.oa.workflow.domain.flow.model.entity.FlowNodeInstance;
 import xtt.cloud.oa.workflow.domain.flow.event.FlowStartedEvent;
 import xtt.cloud.oa.workflow.domain.flow.event.FlowCompletedEvent;
 import xtt.cloud.oa.workflow.domain.flow.event.FlowTerminatedEvent;
+import xtt.cloud.oa.workflow.domain.flow.event.NodeInstanceCreatedEvent;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,15 +37,16 @@ public class FlowInstance {
     private FlowMode flowMode;
     private Long currentNodeId;
     private Long parentFlowInstanceId;
-    private ProcessVariables processVariables;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+    // 流程变量
+    private ProcessVariables processVariables;
+
     // 聚合内的实体集合
     private List<FlowNodeInstance> nodeInstances;
-    
+
     // 领域事件列表
     private List<Object> domainEvents;
     
@@ -215,6 +217,16 @@ public class FlowInstance {
             }
         }
         this.nodeInstances.add(nodeInstance);
+        
+        // 发布节点实例创建事件
+        Long approverId = nodeInstance.getApprover() != null 
+                ? nodeInstance.getApprover().getUserId() 
+                : null;
+        addDomainEvent(new NodeInstanceCreatedEvent(
+                nodeInstance.getId(),
+                this.id != null ? this.id.getValue() : null,
+                nodeInstance.getNodeId(),
+                approverId));
     }
     
     /**
